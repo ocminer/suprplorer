@@ -1,0 +1,70 @@
+extends layout
+block content
+  .page-head
+    div
+      h1= tx.coinbase ? 'Block reward transaction' : 'Transaction'
+      .title-hash
+        span= tx.txid
+        +copy(tx.txid)
+  .stats.four
+    +stat('Amount', F.amount(tx.totalOut, coin.decimals, 2, 8), coin.symbol)
+    +stat('Fee', tx.coinbase ? '–' : F.amount(tx.fee, coin.decimals, 0, 8), tx.coinbase ? null : coin.symbol, tx.coinbase ? null : F.num(Number(tx.fee) / tx.size, 1) + ' base units per byte')
+    +stat('Block', '#' + F.num(tx.height), null, '<a href="' + coin.base + '/block/' + tx.blockHash + '">' + F.short(tx.blockHash, 10, 6) + '</a>')
+    +stat('Confirmations', F.num(tx.confirmations), null, F.utc(tx.time))
+  if flags.length
+    section.panel.section
+      .panel-head
+        h2 Patterns
+        span.aside Heuristics, not proof of ownership
+      .panel-body(style='display:flex;flex-wrap:wrap;gap:8px')
+        each f in flags
+          span.chip(title=f.desc)= f.name + ': ' + f.desc.charAt(0).toLowerCase() + f.desc.slice(1)
+  .flow.section
+    section.panel
+      .panel-head
+        h2 From
+        span.aside= tx.coinbase ? 'New coins' : tx.inputs.length + (tx.inputs.length === 1 ? ' input' : ' inputs')
+      ul.io
+        if tx.coinbase
+          li
+            .left
+              div Block reward for block #{F.num(tx.height)}
+              .meta Newly created coins and fees
+            +amount(tx.totalOut)
+        each i in tx.inputs
+          li
+            .left
+              +who(i.address, { a: 14, b: 8 })
+              .meta
+                a(href=coin.base + '/tx/' + i.prevTxid)= 'from ' + F.short(i.prevTxid, 8, 4) + ':' + i.prevN
+            +amount(i.amount)
+    .arrow(aria-hidden='true')
+      svg(width='20', height='20', viewBox='0 0 20 20', fill='none', stroke='currentColor', stroke-width='1.8')
+        path(d='M4 10h12M11 5l5 5-5 5', stroke-linecap='round', stroke-linejoin='round')
+    section.panel
+      .panel-head
+        h2 To
+        span.aside= tx.outputs.length + (tx.outputs.length === 1 ? ' output' : ' outputs')
+      ul.io
+        each o, n in tx.outputs
+          li
+            .left
+              +who(o.address, { a: 14, b: 8 })
+              .meta
+                if o.spentTxid
+                  a(href=coin.base + '/tx/' + o.spentTxid) Spent in block #{F.num(o.spentHeight)}
+                else
+                  span.pos Unspent
+            +amount(o.amount)
+  section.panel.section
+    .panel-head
+      h2 Details
+    dl.kv
+      dt Included
+      dd #{F.utc(tx.time)} (#[+age(tx.time)])
+      dt Total in
+      dd: +amount(tx.totalIn)
+      dt Total out
+      dd: +amount(tx.totalOut)
+      dt Size
+      dd= F.num(tx.size) + ' bytes'

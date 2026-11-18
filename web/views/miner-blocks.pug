@@ -1,0 +1,19 @@
+extends layout
+block content
+  .page-head
+    div
+      h1
+        if label
+          span.tag(style='--c:' + label.color + ';font-size:15px;vertical-align:6px;margin-right:12px')= label.name
+        | Blocks found
+      .title-hash
+        a(href=coin.base + '/address/' + a.address)= a.address
+    a.btn(href=coin.base + '/address/' + a.address) Back to the address
+  .stats.four
+    +stat('Blocks found', F.num(a.blocksMined), null, 'Since genesis')
+    +stat('Latest block', a.lastMined != null ? '#' + F.num(a.lastMined) : '–')
+    +stat('Balance', F.amount(a.balance, coin.decimals, 2, 4), coin.symbol)
+    +stat('Received', F.amount(a.received, coin.decimals, 2, 4), coin.symbol)
+  section.panel.section
+    include partials/block-table
+    +pager(pageNo, pages, coin.base + '/address/' + a.address + '/blocks')

@@ -1,0 +1,92 @@
+include ../mixins
+- var hr = F.hashrate(act.hashrate)
+- var supplyPct = cap > 0n ? Number(tip.supply * 10000n / cap) / 100 : null
+.stats
+  +stat('Block height', F.num(tip.height), null, '<span data-ts="' + tip.time + '">' + F.ago(tip.time) + '</span>')
+  +stat('Supply', F.compact(F.coins(tip.supply, coin.decimals), 2), coin.symbol, supplyPct != null ? supplyPct.toFixed(2) + '% of ' + F.compact(F.coins(cap, coin.decimals), 2) + ' ' + coin.symbol + ' max' : null)
+    if supplyPct != null
+      .meter: i(style='width:' + Math.min(100, supplyPct) + '%')
+  +stat('Hashrate, 24h', hr.value, hr.unit, 'Estimated from difficulty and block times')
+  +stat('Difficulty', F.num(tip.difficulty, 2), null, '24h average ' + F.num(act.difficulty, 2))
+  +stat('Block time, 24h', act.blockTime ? F.duration(act.blockTime) : '–', null, F.num(act.blocks) + ' blocks, target ' + coin.blockTime + 's')
+  +stat('Active miners, 24h', F.num(act.miners), null, F.num(act.txs) + ' transfers in 24h')
+
+section.panel.section
+  .panel-head
+    h2 Who found the last #{lane.length} blocks
+    a.aside(href=coin.base + '/pools') Pool shares
+  .lane-wrap
+    .lane(role='list')
+      each b, i in lane.slice().reverse()
+        - var e = entity(b.miner)
+        a(role='listitem', href=coin.base + '/block/' + b.hash, class=(i === lane.length - 1 ? 'newest' : null), style=e ? '--c:' + e.color : null, title='Block ' + b.height + ', found by ' + (e ? e.name : F.short(b.miner || '', 10, 6)) + ', ' + F.ago(b.time), aria-label='Block ' + b.height)
+    .lane-axis
+      span #{F.ago(lane[lane.length - 1].time)}
+      span Newest: block #{F.num(lane[0].height)}
+  - var counts = {}
+  each b in lane
+    - var e = entity(b.miner); var k = e ? e.name : '~other'
+    - counts[k] = counts[k] || { n: 0, color: e ? e.color : null }; counts[k].n++
+  .legend
+    each v, k in counts
+      if k !== '~other'
+        span
+          i.dot(style='--c:' + v.color)
+          | #{k}
+          b= v.n
+    if counts['~other']
+      span
+        i.dot
+        | Unlabelled miners
+        b= counts['~other'].n
+
+.grid-main.section
+  section.panel
+    .panel-head
+      h2 Latest blocks
+      a.aside(href=coin.base + '/blocks') All blocks
+    .table-scroll
+      table.t
+        thead
+          tr
+            th Block
+            th Age
+            th.hide-sm Hash
+            th Found by
+            th.num.hide-sm Txs
+            th.num Reward
+        tbody
+          each b in blocks
+            tr
+              td.height: a(href=coin.base + '/block/' + b.hash)= F.num(b.height)
+              td.muted: +age(b.time)
+              td.hide-sm: +hash(b.hash, coin.base + '/block/' + b.hash, 8, 6)
+              td: +who(b.miner, { a: 8, b: 4 })
+              td.num.hide-sm= b.txs
+              td.num: +amount(b.reward, { nosym: true })
+  section.panel
+    .panel-head
+      h2 Miners, last 24h
+      a.aside(href=coin.base + '/pools') All pools
+    +donut(donut, F.num(minersTotal), 'blocks in 24h')
+    table.t
+      thead
+        tr
+          th Miner
+          th.num Blocks
+          th.num Share
+      tbody
+        each m in miners
+          tr
+            td
+              if m.name
+                a.tag(href=coin.base + '/address/' + m.address, style='--c:' + m.color)= m.name
+              else
+                +who(m.address, { a: 10, b: 4 })
+            td.num: a(href=coin.base + '/address/' + m.address + '/blocks')= m.blocks
+            td.num
+              .share(style=m.color ? '--c:' + m.color : null)
+                .bar: i(style='width:' + m.share.toFixed(1) + '%')
+                span= m.share.toFixed(1) + '%'
+        if !miners.length
+          tr: td.empty(colspan=3) No blocks in the last 24 hours.

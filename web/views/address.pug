@@ -1,0 +1,86 @@
+extends layout
+block content
+  .page-head
+    .addr-head
+      img.qr(src=coin.base + '/qr/' + a.address + '.svg', alt='QR code of this address', width='132', height='132')
+      div
+        h1
+          if label
+            span.tag(style='--c:' + label.color + ';font-size:15px;vertical-align:6px;margin-right:12px')= label.name
+          | Address
+        .title-hash
+          span= a.address
+          +copy(a.address)
+        if label && label.url
+          a.muted(href=label.url, rel='noopener nofollow ugc', target='_blank', style='font-size:14px')= label.url
+  .stats
+    +stat('Balance', F.amount(a.balance, coin.decimals, 2, 8), coin.symbol, a.rank ? 'Rank #' + F.num(a.rank) + ' in the <a href="' + coin.base + '/richlist">rich list</a>' : 'Empty')
+    +stat('Received', F.amount(a.received, coin.decimals, 2, 4), coin.symbol, F.num(a.utxos) + ' unspent outputs')
+    +stat('Sent', F.amount(a.sent, coin.decimals, 2, 4), coin.symbol, F.num(a.txs) + ' transactions')
+    if a.blocksMined
+      +stat('Blocks found', '', null, 'Latest <a href="' + coin.base + '/block/' + a.lastMined + '">#' + F.num(a.lastMined) + '</a>')
+        a.stat-value.stat-link(href=coin.base + '/address/' + a.address + '/blocks')
+          = F.num(a.blocksMined)
+          span.unit View all
+    +stat('First seen', '#' + F.num(a.firstHeight), null, 'Last active in block #' + F.num(a.lastHeight))
+    +stat('Linked addresses', a.cluster ? F.num(a.cluster.size) : '–', null, a.cluster ? 'Spent together, likely one owner' + (a.cluster.label ? ': ' + F.esc(a.cluster.label) : '') : 'Never spent together with another address')
+  if chart.length > 1
+    section.panel.chart-card.section
+      .panel-head
+        h2 Balance over time
+        span.aside= coin.symbol
+      .panel-body
+        +chart('a-bal', chart.map(p => p[0]), chart.map(p => p[1]), { format: 'coins', unit: coin.symbol, zero: true, step: true })
+  section.panel.section
+    .panel-head
+      h2 Transactions
+      span.aside= F.num(a.txs)
+    .table-scroll
+      table.t
+        thead
+          tr
+            th Transaction
+            th Block
+            th.hide-sm Age
+            th.num Change
+            th.num.hide-sm Balance
+        tbody
+          each t in txs
+            - var net = t.received - t.sent
+            tr
+              td
+                +hash(t.txid, coin.base + '/tx/' + t.txid, 12, 6)
+                if t.coinbase
+                  span.chip.accent.hide-sm(style='margin-left:8px') Mined
+              td: a(href=coin.base + '/block/' + t.height)= '#' + F.num(t.height)
+              td.muted.hide-sm: +age(t.time)
+              td.num: +amount(net, { sign: true, cls: net >= 0 ? 'pos' : 'neg', nosym: true })
+              td.num.hide-sm: +amount(t.balance, { nosym: true })
+    +pager(pageNo, pages, coin.base + '/address/' + a.address)
+  details.panel.more.section
+    summary
+      span Unspent outputs and keys
+      span.dim= F.num(a.utxos) + ' unspent'
+    dl.kv
+      dt Public key
+      dd.mono= a.pubkey || 'Not revealed yet. The key appears with the first spend from this address.'
+      dt Address type
+      dd= a.lockType === 1 ? 'Single key (Ed25519)' : 'Multisig'
+    .table-scroll
+      table.t
+        thead
+          tr
+            th Output
+            th.hide-sm Block
+            th.num Amount
+        tbody
+          each u in utxos
+            tr
+              td
+                a.mono(href=coin.base + '/tx/' + u.txid)= F.short(u.txid, 12, 6) + ':' + u.n
+                if u.coinbase
+                  span.chip.accent.hide-sm(style='margin-left:8px') Mined
+              td.hide-sm: a(href=coin.base + '/block/' + u.height)= '#' + F.num(u.height)
+              td.num: +amount(u.amount)
+          if a.utxos > utxos.length
+            tr: td.muted(colspan=3) Showing the #{utxos.length} largest of #{F.num(a.utxos)} unspent outputs.

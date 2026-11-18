@@ -1,0 +1,26 @@
+# dependencies and caches
+node_modules/
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# secrets and server-only files: never commit these
+.env
+.env.*
+*.env
+*.pem
+*.key
+*.crt
+*.p12
+*.sql.gz
+*.dump
+secrets/
+HANDOFF.md
+ops/
+
+# editors / OS
+.DS_Store
+*.swp
+.idea/
+.vscode/

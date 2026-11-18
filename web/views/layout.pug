@@ -1,0 +1,128 @@
+include mixins
+- var fullTitle = coin ? (title + ' | ' + coin.name + ' Explorer') : (title || 'Suprplorer – block explorers')
+- var description = desc || (coin ? 'Live ' + coin.name + ' block explorer by Suprnova: blocks, transactions, addresses, mining pools, hashrate and rich list.' : 'Suprplorer: live block explorers for proof-of-work coins, run by Suprnova.')
+- var ogImage = site.origin + '/img/og/' + (coin ? coin.id : 'suprplorer') + '.png'
+doctype html
+html(lang='en')
+  head
+    meta(charset='utf-8')
+    meta(name='viewport', content='width=device-width, initial-scale=1, viewport-fit=cover')
+    title= fullTitle
+    meta(name='description', content=description)
+    if typeof noindex !== 'undefined' && noindex
+      meta(name='robots', content='noindex, follow')
+    else
+      link(rel='canonical', href=canonical)
+    if site.gsv
+      meta(name='google-site-verification', content=site.gsv)
+    meta(name='theme-color', content='#0a0e1a')
+    meta(property='og:type', content='website')
+    meta(property='og:site_name', content='Suprplorer')
+    meta(property='og:title', content=fullTitle)
+    meta(property='og:description', content=description)
+    meta(property='og:url', content=canonical)
+    meta(property='og:image', content=ogImage)
+    meta(property='og:image:width', content='1200')
+    meta(property='og:image:height', content='630')
+    meta(name='twitter:card', content='summary_large_image')
+    meta(name='twitter:title', content=fullTitle)
+    meta(name='twitter:description', content=description)
+    meta(name='twitter:image', content=ogImage)
+    link(rel='preload', href='/fonts/geist-latin-wght-normal.woff2', as='font', type='font/woff2', crossorigin)
+    link(rel='stylesheet', href='/vendor/uPlot.min.css?v=' + assetVersion)
+    link(rel='stylesheet', href='/css/app.css?v=' + assetVersion)
+    link(rel='icon', href=coin ? coin.logo : '/img/suprplorer.svg', type='image/svg+xml')
+    if coin
+      style!= ':root{--accent:' + coin.accent + '}'
+    - var ld = [{ '@context': 'https://schema.org', '@type': 'Organization', name: 'Suprnova', url: site.suprnova, sameAs: [site.pool] }]
+    if coin
+      - ld.push({ '@context': 'https://schema.org', '@type': 'WebSite', name: coin.name + ' Explorer by Suprplorer', url: site.origin + coin.base + '/', potentialAction: { '@type': 'SearchAction', target: site.origin + coin.base + '/search?q={search_term_string}', 'query-input': 'required name=search_term_string' } })
+      if page !== 'overview'
+        - ld.push({ '@context': 'https://schema.org', '@type': 'BreadcrumbList', itemListElement: [{ '@type': 'ListItem', position: 1, name: coin.name + ' Explorer', item: site.origin + coin.base + '/' }, { '@type': 'ListItem', position: 2, name: title, item: canonical }] })
+    script(type='application/ld+json')!= JSON.stringify(ld).replace(/</g, '\\u003c')
+    if site.ga4
+      script(async, src='https://www.googletagmanager.com/gtag/js?id=' + site.ga4)
+      script(src='/js/ga.js?v=' + assetVersion, data-ga=site.ga4)
+  body(class='page-' + page)
+    header.site-head
+      .strip
+        .wrap
+          if coin
+            a.live(href=coin.base + '/blocks', data-live-tip=coin.base + '/_/tip', aria-label='Latest block')
+              i.pulse(aria-hidden='true')
+              span.live-word Live
+              span.live-height Block #{tipHeight != null ? '#' + F.num(tipHeight) : ''}
+              span.live-age(data-ts=tipTime)= tipTime ? F.ago(tipTime) : ''
+          else
+            span.live
+              i.pulse(aria-hidden='true')
+              span.live-word Live explorers
+          .strip-links
+            a.pool-link(href=site.pool, rel='noopener', title='NEB mining pool by Suprnova')
+              span.hide-sm Mine #{coin ? coin.symbol : 'NEB'} at
+              |  Suprnova
+              svg(viewBox='0 0 12 12', width='10', height='10', aria-hidden='true'): path(d='M3.5 2.5h6v6M9.5 2.5 2.5 9.5', fill='none', stroke='currentColor', stroke-width='1.5')
+      .bar
+        .wrap
+          if coin
+            a.brand(href=coin.base + '/', aria-label=coin.name + ' explorer home')
+              img(src=coin.logo, alt='', width='30', height='30')
+              span.brand-text
+                span.brand-name #{coin.name} Explorer
+                span.brand-by by Suprplorer
+          else
+            a.brand(href='/')
+              img(src='/img/suprplorer.svg', alt='', width='30', height='30')
+              span.brand-text
+                span.brand-name Suprplorer
+                span.brand-by by Suprnova
+          if coin
+            nav.nav(aria-label='Main')
+              each item in [['', 'Overview', 'overview'], ['/blocks', 'Blocks', 'blocks'], ['/mining', 'Mining', 'mining'], ['/pools', 'Pools', 'pools'], ['/richlist', 'Rich list', 'richlist'], ['/network', 'Network', 'network']]
+                a(href=coin.base + item[0] + (item[0] ? '' : '/'), aria-current=(page === item[2] || (item[2] === 'blocks' && (page === 'block' || page === 'miner-blocks')) ? 'page' : null))= item[1]
+            form.topsearch(action=coin.base + '/search', method='get', role='search')
+              +searchIcon
+              label.sr-only(for='q-top') Search
+              input#q-top(name='q', placeholder='Block, tx, address or pool', autocomplete='off', spellcheck='false')
+              span.kbd(aria-hidden='true') /
+    main
+      .wrap
+        block content
+    footer.site-foot
+      .wrap
+        .foot-grid
+          .foot-brand
+            a.brand(href='/')
+              img(src='/img/suprplorer.svg', alt='', width='28', height='28')
+              span.brand-text
+                span.brand-name Suprplorer
+                span.brand-by by Suprnova
+            p Block explorers that index every chain from our own full nodes, with pool attribution, rich lists and address history.
+          nav(aria-label='Explorer')
+            h2 Explorer
+            if coin
+              a(href=coin.base + '/') Overview
+              a(href=coin.base + '/blocks') Blocks
+              a(href=coin.base + '/mining') Mining
+              a(href=coin.base + '/pools') Mining pools
+              a(href=coin.base + '/richlist') Rich list
+              a(href=coin.base + '/network') Network
+            else
+              each c in coins
+                a(href=c.base + '/')= c.name + ' explorer'
+          nav(aria-label='Mining')
+            h2 Mine with Suprnova
+            a(href=site.pool, rel='noopener') NEB pool at neb.suprnova.cc
+            a(href=site.suprnova, rel='noopener') All Suprnova pools
+          nav(aria-label='Chains')
+            h2 Chains
+            each c in coins
+              a(href=c.base + '/')= (c.fullName || c.name) + ' (' + c.symbol + ')'
+              if c.links
+                each url, name in c.links
+                  a(href=url, rel='noopener nofollow')= c.name + ' ' + name.toLowerCase()
+        .foot-base
+          span © #{new Date().getUTCFullYear()} Suprnova
+          span Data comes from our own nodes and updates with every block.
+    script(src='/vendor/uPlot.iife.min.js?v=' + assetVersion, defer)
+    script(src='/js/app.js?v=' + assetVersion, defer)

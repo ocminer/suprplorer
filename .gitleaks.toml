@@ -1,0 +1,21 @@
+# gitleaks configuration: default rules plus checks for this project's own secret formats
+[extend]
+useDefault = true
+
+[[rules]]
+id = "redis-url-with-password"
+description = "Redis URL with an embedded password"
+regex = '''rediss?://[^:@/\s]*:[^@/\s]{6,}@'''
+
+[[rules]]
+id = "mysql-url-with-password"
+description = "MySQL URL with an embedded password"
+regex = '''mysql://[^:@/\s]+:[^@/\s]{6,}@'''
+
+[[rules]]
+id = "password-assignment"
+description = "Password assigned in an env or config file"
+regex = '''(?i)(MYSQL_PASSWORD|REDIS_PASSWORD|requirepass|DB_PASS(WORD)?)\s*[=:]\s*['"]?[^\s'"$]{6,}'''
+
+[allowlist]
+paths = ['''package-lock\.json''', '''\.min\.js$''']

@@ -1,0 +1,88 @@
+extends layout
+block content
+  - var span = range === 'all' ? 'all time' : range
+  - var share = total ? (100 * poolBlocks / total) : 0
+  .page-head
+    h1 Mining pools
+    +range(range, coin.base + '/pools')
+  .stats.four
+    +stat("Known pools' share", share.toFixed(1), '%', F.num(poolBlocks) + ' of ' + F.num(total) + ' blocks, ' + span)
+    +stat('Known pools', F.num(pools.length), null, 'Identified by their payout addresses')
+    +stat('Blocks found', F.num(total), null, span)
+    +stat('Paid to pools', F.compact(F.coins(poolEarned, coin.decimals), 2), coin.symbol, 'Rewards and fees, ' + span)
+  .grid-main.section
+    section.panel.chart-card
+      +chartHead('Blocks per pool', F.num(total), 'blocks', 'Stacked, ' + (stack ? (stack.bucket >= 3600 ? 'per ' + (stack.bucket / 3600) + ' hours' : 'per ' + (stack.bucket / 60) + ' minutes') : '') + ', ' + span)
+      .panel-body
+        if stack
+          +chart('p-stack', stack.x, null, { stack: stack.series, format: 'int', tall: true })
+        else
+          .chart.tall: .chart-empty No blocks in this range.
+      if stack
+        .legend
+          each sr in stack.series
+            span
+              i.dot(style='--c:' + sr.color)
+              | #{sr.label}
+    section.panel
+      .panel-head
+        h2 Share of blocks
+        span.aside= span
+      +donut(donut, share.toFixed(0) + '%', 'known pools')
+  section.panel.section
+    .panel-head
+      h2 Pools
+      span.aside= span
+    .table-scroll
+      table.t
+        thead
+          tr
+            th Pool
+            th.num Blocks
+            th.num Share
+            th.num Earned
+            th.num.hide-sm Payout addresses
+            th.num Last block
+        tbody
+          each p in pools
+            tr
+              td: a.tag(href=coin.base + '/address/' + p.address, style='--c:' + p.color)= p.name
+              td.num: a(href=coin.base + '/address/' + p.address + '/blocks')= F.num(p.blocks)
+              td.num
+                .share(style='--c:' + p.color)
+                  .bar: i(style='width:' + p.share.toFixed(1) + '%')
+                  span= p.share.toFixed(1) + '%'
+              td.num: +amount(p.earned, { nosym: true })
+              td.num.hide-sm= p.addresses
+              td.num
+                a(href=coin.base + '/block/' + p.last)= '#' + F.num(p.last)
+                .dim(style='font-size:12.5px'): +age(p.lastTime)
+          if !pools.length
+            tr: td.empty(colspan=6) No labelled pool found a block in this range.
+  section.panel.section
+    .panel-head
+      h2 Unlabelled miners
+      span.aside #{F.num(othersCount)} payout addresses, not attributed to a known pool
+    .table-scroll
+      table.t
+        thead
+          tr
+            th Payout address
+            th.num Blocks
+            th.num Share
+            th.num.hide-sm Earned
+            th.num Last block
+        tbody
+          each m in others
+            tr
+              td: +who(m.address, { a: 14, b: 8 })
+              td.num: a(href=coin.base + '/address/' + m.address + '/blocks')= F.num(m.blocks)
+              td.num
+                .share
+                  .bar: i(style='width:' + m.share.toFixed(1) + '%')
+                  span= m.share.toFixed(1) + '%'
+              td.num.hide-sm: +amount(m.earned, { nosym: true })
+              td.num
+                a(href=coin.base + '/block/' + m.last)= '#' + F.num(m.last)
+          if !others.length
+            tr: td.empty(colspan=5) Every block in this range came from a labelled pool.

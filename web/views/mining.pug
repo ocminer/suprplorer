@@ -1,0 +1,79 @@
+extends layout
+block content
+  - var hr = F.hashrate(act.hashrate)
+  - var span = range === 'all' ? 'all time' : range
+  - var earned = miners.reduce((s, m) => s + m.earned, 0n)
+  - var X = series.points.map(p => p.t)
+  - var bucketLabel = series.bucket >= 3600 ? 'Per ' + (series.bucket / 3600) + ' hours' : 'Per ' + (series.bucket / 60) + ' minutes'
+  .page-head
+    h1 Mining
+    +range(range, coin.base + '/mining')
+  .stats
+    +stat('Blocks found, ' + span, F.num(act.blocks), null, 'Latest <a href="' + coin.base + '/block/' + tip.hash + '">#' + F.num(tip.height) + '</a>')
+    +stat('Estimated hashrate', hr.value, hr.unit, 'Average over ' + span)
+    +stat('Difficulty', F.num(tip.difficulty, 2), null, 'Average ' + F.num(act.difficulty, 2) + ' over ' + span)
+    +stat('Block time', act.blockTime ? F.duration(act.blockTime) : '–', null, 'Target ' + coin.blockTime + 's')
+    +stat('Active miners', F.num(act.miners), null, 'Payout addresses that found a block')
+    +stat('Paid to miners', F.compact(F.coins(earned, coin.decimals), 2), coin.symbol, 'Rewards and fees, project share excluded')
+  .grid-2.section
+    section.panel.chart-card
+      +chartHead('Estimated hashrate', hr.value, hr.unit, 'Average over ' + span + ', ' + bucketLabel.toLowerCase())
+      .panel-body
+        +chart('m-hash', X, series.points.map(p => p.hashrate), { format: 'hashrate' })
+      +chartFoot(series.points.map(p => p.hashrate), v => { var h = F.hashrate(v); return h.value + ' ' + h.unit; })
+    section.panel.chart-card
+      +chartHead('Difficulty', F.num(tip.difficulty, 1), null, 'Current, mean ' + bucketLabel.toLowerCase())
+      .panel-body
+        +chart('m-diff', X, series.points.map(p => p.difficulty), { format: 'compact', color: '#8e7cf8' })
+      +chartFoot(series.points.map(p => p.difficulty), v => F.num(v, 2))
+    section.panel.chart-card
+      +chartHead('Blocks found', F.num(act.blocks), null, bucketLabel + ', ' + span + ' total')
+      .panel-body
+        +chart('m-blocks', X, series.points.map(p => p.blocks), { format: 'int', bars: true, zero: true, color: '#5aa9ff' })
+      +chartFoot(series.points.map(p => p.blocks), v => F.num(v))
+    section.panel.chart-card
+      +chartHead('Active miners', F.num(act.miners), null, 'Distinct payout addresses, ' + bucketLabel.toLowerCase())
+      .panel-body
+        +chart('m-miners', X, series.points.map(p => p.miners), { format: 'int', zero: true, color: '#f2b84b' })
+      +chartFoot(series.points.map(p => p.miners), v => F.num(v))
+  section.panel.section
+    .panel-head
+      h2 Top miners
+      span.aside #{F.num(minersTotal)} blocks, #{span}
+    .table-scroll
+      table.t
+        thead
+          tr
+            th.rank #
+            th Miner
+            th.num Blocks
+            th.num Share
+            th.num.hide-sm Earned
+            th.num Last block
+        tbody
+          each m, i in miners.slice(0, 50)
+            tr
+              td.rank= i + 1
+              td
+                if m.name
+                  a.tag(href=coin.base + '/address/' + m.address, style='--c:' + m.color)= m.name
+                  if m.addresses > 1
+                    span.dim.hide-sm(style='margin-left:8px')= m.addresses + ' addresses'
+                else
+                  +who(m.address, { a: 14, b: 6 })
+              td.num: a(href=coin.base + '/address/' + m.address + '/blocks')= F.num(m.blocks)
+              td.num
+                .share(style=m.color ? '--c:' + m.color : null)
+                  .bar: i(style='width:' + m.share.toFixed(1) + '%')
+                  span= m.share.toFixed(1) + '%'
+              td.num.hide-sm: +amount(m.earned, { nosym: true })
+              td.num
+                a(href=coin.base + '/block/' + m.last)= '#' + F.num(m.last)
+                .dim(style='font-size:12.5px'): +age(m.lastTime)
+          if !miners.length
+            tr: td.empty(colspan=6) No blocks in this range.
+  section.panel.section
+    .panel-head
+      h2 Latest blocks
+      a.aside(href=coin.base + '/blocks') All blocks
+    include partials/block-table

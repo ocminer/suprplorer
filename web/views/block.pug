@@ -1,0 +1,81 @@
+extends layout
+block content
+  - var e = entity(b.miner)
+  .page-head
+    div
+      h1 Block #{F.num(b.height)}
+      .title-hash
+        span= b.hash
+        +copy(b.hash)
+    .stepper
+      a.btn(href=b.parent ? coin.base + '/block/' + b.parent : '#', aria-disabled=(b.parent ? null : 'true')) Previous
+      a.btn(href=b.next ? coin.base + '/block/' + b.next : '#', aria-disabled=(b.next ? null : 'true')) Next
+  .stats.four
+    +stat('Found by', '', null)
+      .stat-value(style='margin-top:6px;font-size:18px')
+        if b.height === 0
+          span.muted Genesis
+        else
+          +who(b.miner, { a: 12, b: 6 })
+    +stat('Reward', F.amount(b.reward + b.fees, coin.decimals, 2, 4), coin.symbol, 'Fees ' + F.amount(b.fees, coin.decimals, 0) + ' ' + coin.symbol)
+    +stat('Transactions', F.num(b.txs), null, F.bytes(b.size))
+    +stat('Confirmations', F.num(b.confirmations), null, '<span title="' + F.utc(b.time) + '">' + F.utc(b.time) + '</span>')
+  section.panel.section
+    .panel-head
+      h2 Details
+    dl.kv
+      dt Mined
+      dd #{F.utc(b.time)} (#[+age(b.time)])
+      dt Difficulty
+      dd= F.num(b.difficulty, 4)
+      dt Training shares listed
+      dd= F.num(b.shares)
+      dt Supply after this block
+      dd: +amount(b.supply)
+      if b.destroyed > 0
+        dt Unclaimed reward
+        dd: +amount(b.destroyed)
+      dt Transfer volume
+      dd: +amount(b.volume)
+      dt Bits
+      dd.mono= b.bits
+      dt Nonce
+      dd.mono= b.nonce
+      dt Body root
+      dd.mono= b.bodyRoot
+      dt Chain work
+      dd.mono= b.chainwork
+      if b.parent
+        dt Parent
+        dd: a.mono(href=coin.base + '/block/' + b.parent)= b.parent
+      dt Coinbase data
+      dd.mono.dim= b.coinbaseWitness
+  section.panel.section
+    .panel-head
+      h2 Transactions
+      span.aside= F.num(b.txs)
+    each t in txs
+      .txcard
+        div
+          +hash(t.txid, coin.base + '/tx/' + t.txid, 16, 8)
+          if t.coinbase
+            span.chip.accent(style='margin-left:10px') Block reward
+          each f in flagsOf(t.flags).slice(0, 3)
+            span.chip.hide-sm(style='margin-left:6px', title=f.desc)= f.name
+          .route(style='margin-top:6px')
+            if t.coinbase
+              span New coins
+            else
+              each i in t.inputs.slice(0, 2)
+                +who(i.address, { a: 8, b: 4 })
+              if t.inputs.length > 2
+                span +#{t.inputs.length - 2}
+            span.dim →
+            each o in t.outputs.slice(0, 3)
+              +who(o.address, { a: 8, b: 4 })
+            if t.outputs.length > 3
+              span +#{t.outputs.length - 3} more
+        .num
+          +amount(t.totalOut)
+          if !t.coinbase
+            .dim(style='font-size:12.5px') Fee #{F.amount(t.fee, coin.decimals, 0)}

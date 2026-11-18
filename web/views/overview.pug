@@ -1,0 +1,59 @@
+extends layout
+block content
+  .page-head
+    h1 #{coin.name} explorer
+      span.sub= coin.tagline
+  form.hero-search(action=coin.base + '/search', method='get', role='search')
+    +searchIcon
+    label.sr-only(for='q-hero') Search the #{coin.name} chain
+    input#q-hero(name='q', placeholder='Block height or hash, transaction ID, address or pool name', autocomplete='off', spellcheck='false')
+    button(type='submit') Search
+  div(data-live=coin.base + '/?live=1')
+    include partials/overview-live
+  .grid-2.section
+    - var hr24 = F.hashrate(act.hashrate)
+    section.panel.chart-card
+      +chartHead('Hashrate', hr24.value, hr24.unit, '24h average, per 15 minutes')
+      .panel-body
+        +chart('c-hash', series.points.map(p => p.t), series.points.map(p => p.hashrate), { format: 'hashrate' })
+    section.panel.chart-card
+      +chartHead('Difficulty', F.num(tip.difficulty, 1), null, 'Current, mean per 15 minutes')
+      .panel-body
+        +chart('c-diff', series.points.map(p => p.t), series.points.map(p => p.difficulty), { format: 'compact', color: '#8e7cf8' })
+  section.panel.section
+    .panel-head
+      h2 Latest transfers
+      span.aside Mined coinbase transactions not included
+    .table-scroll
+      table.t
+        thead
+          tr
+            th Transaction
+            th Age
+            th From
+            th.num.hide-sm Outputs
+            th.num Amount
+            th.num.hide-sm Fee
+        tbody
+          each t in transfers
+            tr
+              td: +hash(t.txid, coin.base + '/tx/' + t.txid, 10, 6)
+              td.muted: +age(t.time)
+              td: +who(t.from, { a: 10, b: 4 })
+              td.num.hide-sm= t.outs
+              td.num: +amount(t.amount)
+              td.num.hide-sm.muted: +amount(t.fee, { nosym: true, min: 0 })
+          if !transfers.length
+            tr: td.empty(colspan=6) No transfers yet.
+  section.panel.section
+    .panel-body
+      .about
+        div
+          h2 About the #{coin.name} block explorer
+          p This explorer indexes every #{coin.fullName || coin.name} (#{coin.symbol}) block from our own full node as soon as it is found. Search any block height, block hash, transaction ID or address to see its full history, balance over time and unspent outputs.
+        div
+          h2 Mining pools and miners
+          p Each block shows who found it. Known pools are labelled by their payout addresses, so you can follow pool shares, hashrate and difficulty over time. Want to mine #{coin.symbol}? The #[a(href=site.pool, rel='noopener') Suprnova #{coin.name} pool] pays out to your own address.
+        div
+          h2 How #{coin.name} works
+          p #{coin.name} is a proof-of-work coin where every mining attempt is one training step of a neural network that the chain owns, trained on exoplanet signals from the Kepler and TESS missions. Blocks target one minute.

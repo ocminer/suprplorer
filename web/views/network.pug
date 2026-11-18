@@ -1,0 +1,54 @@
+extends layout
+block content
+  - var inbound = peers.filter(p => p.inbound).length
+  .page-head
+    h1 Network
+      span.sub Peers connected to our #{coin.name} node
+  .stats.four
+    +stat('Connected peers', F.num(peers.length), null, F.num(inbound) + ' inbound, ' + F.num(peers.length - inbound) + ' outbound')
+    +stat('Best block', '#' + F.num(tip.height), null, '<span data-ts="' + tip.time + '">' + F.ago(tip.time) + '</span>')
+    +stat('Node software', info ? info.version : '–', null, info ? 'Protocol ' + info.protocolversion + ', ' + info.network : null)
+    +stat('Peers in sync', F.num(peers.filter(p => p.height >= tip.height - 1).length), null, 'Within one block of our tip')
+  if versions.length
+    section.panel.section
+      .panel-head
+        h2 Client versions
+      .panel-body
+        .stack
+          each v in versions
+            i(style='--c:' + F.colorFor(v[0]) + ';flex:' + v[1], title=v[0] + ': ' + v[1])
+      .legend
+        each v in versions
+          span
+            i.dot(style='--c:' + F.colorFor(v[0]))
+            | #{v[0]}
+            b= v[1]
+  section.panel.section
+    .panel-head
+      h2 Peers
+      span.aside The last part of each address is hidden
+    .table-scroll
+      table.t
+        thead
+          tr
+            th Node
+            th Direction
+            th Client
+            th.num.hide-sm Protocol
+            th.num Height
+            th.num Connected
+        tbody
+          each p in peers
+            tr
+              td.mono= p.masked
+              td.muted= p.inbound ? 'Inbound' : 'Outbound'
+              td= p.agent
+              td.num.hide-sm.muted= p.protocol
+              td.num
+                if p.height >= tip.height - 1
+                  span.pos= F.num(p.height)
+                else
+                  span.muted= F.num(p.height)
+              td.num.muted= F.duration(p.connected)
+          if !peers.length
+            tr: td.empty(colspan=6) The node has no peers right now.

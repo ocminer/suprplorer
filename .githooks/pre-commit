@@ -1,0 +1,33 @@
+#!/bin/bash
+# Refuses commits that could leak secrets. Enabled with: git config core.hooksPath .githooks
+set -uo pipefail
+fail() { echo "pre-commit: $*" >&2; exit 1; }
+
+# 1. commits must use a GitHub noreply address (the repository is public)
+email=$(git config user.email || true)
+[[ "$email" == *@users.noreply.github.com ]] || fail "user.email must be your <id>+<login>@users.noreply.github.com address"
+
+# 2. no secret-looking files
+bad=$(git diff --cached --name-only --diff-filter=AM | grep -Ei '(^|/)(\.env(\..*)?|[^/]*\.env|[^/]*\.(pem|key|p12|crt)|HANDOFF\.md|id_(rsa|ed25519)[^/]*)$' || true)
+[[ -z "$bad" ]] || fail "refusing to commit: $bad"
+
+# 3. the real secrets must not appear anywhere in the staged changes. The files holding them are
+#    listed only in the local git config (never pushed):  git config --add suprplorer.secretfile <path>
+secrets=$(git config --get-all suprplorer.secretfile | while read -r f; do sudo -n cat "$f" 2>/dev/null; done \
+  | sed -nE -e 's/^[A-Za-z_]*(PASS|SECRET|TOKEN|KEY|pass|secret|token|key)[A-Za-z_]*[[:space:]]*[=[:space:]][[:space:]]*["'\'']?([^"'\'' ]+)["'\'']?[[:space:]]*$/\2/p' \
+               -e 's#.*://[^:@/[:space:]]*:([^@/[:space:]]+)@.*#\1#p' \
+  | awk 'length($0) >= 8' | sort -u)
+if [[ -z "$secrets" ]]; then
+  echo "pre-commit: warning: no secrets readable from suprplorer.secretfile entries, skipping the exact-match check" >&2
+elif git diff --cached -U0 --no-color | grep '^+' | grep -F -f <(printf '%s\n' "$secrets") >/dev/null; then
+  fail "a real password or key is in the staged changes; remove it"
+fi
+
+# 4. generic secret scan
+if command -v gitleaks >/dev/null; then
+  gitleaks protect --staged --redact --no-banner --config .gitleaks.toml >/dev/null 2>&1 \
+    || { gitleaks protect --staged --redact --no-banner --config .gitleaks.toml -v >&2; fail "gitleaks found a possible secret"; }
+else
+  fail "gitleaks is not installed (sudo apt install gitleaks)"
+fi
+exit 0

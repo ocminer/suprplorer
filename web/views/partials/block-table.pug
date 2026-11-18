@@ -1,0 +1,23 @@
+.table-scroll
+  table.t
+    thead
+      tr
+        th Block
+        th Age
+        th Hash
+        th Found by
+        th.num.hide-sm Txs
+        th.num.hide-sm Size
+        th.num.hide-sm Difficulty
+        th.num Reward
+    tbody
+      each b in blocks
+        tr
+          td.height: a(href=coin.base + '/block/' + b.hash)= F.num(b.height)
+          td.muted: +age(b.time)
+          td: +hash(b.hash, coin.base + '/block/' + b.hash, 10, 6)
+          td: +who(b.miner, { a: 10, b: 4 })
+          td.num.hide-sm= b.txs
+          td.num.hide-sm.muted= F.bytes(b.size)
+          td.num.hide-sm.muted= F.num(b.difficulty, 1)
+          td.num: +amount(b.reward, { nosym: true })

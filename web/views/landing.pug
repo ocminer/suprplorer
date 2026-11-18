@@ -1,0 +1,30 @@
+extends layout
+block content
+  .page-head
+    h1 Block explorers
+      span.sub Each chain indexed from our own full node.
+  .coins
+    each c in cards
+      a.coin-card(href=c.coin.base + '/', style='--c:' + c.coin.accent)
+        .top
+          img(src=c.coin.logo, alt='')
+          div
+            h2= c.coin.name
+            .muted(style='font-size:13.5px')= c.coin.fullName
+        if c.tip
+          - var hr = F.hashrate(c.act.hashrate)
+          dl
+            div
+              dt Height
+              dd= F.num(c.tip.height)
+            div
+              dt Hashrate, 24h
+              dd #{hr.value} #{hr.unit}
+            div
+              dt Supply
+              dd #{F.compact(F.coins(c.tip.supply, c.coin.decimals), 2)} #{c.coin.symbol}
+            div
+              dt Latest block
+              dd: span(data-ts=c.tip.time)= F.ago(c.tip.time)
+        else
+          p.muted Index is starting.

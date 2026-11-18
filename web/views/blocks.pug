@@ -1,0 +1,8 @@
+extends layout
+block content
+  .page-head
+    h1 Blocks
+      span.sub #{F.num(tip.height + 1)} blocks since genesis
+  section.panel
+    include partials/block-table
+    +pager(pageNo, pages, coin.base + '/blocks')

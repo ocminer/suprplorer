@@ -1,0 +1,61 @@
+extends layout
+block content
+  - var sup = tip.supply
+  - var pct = v => sup > 0 ? (Number(BigInt(v) * 1000000n / BigInt(sup)) / 10000) : 0
+  - var t10 = pct(rl.top10), t100 = pct(rl.top100), t1000 = pct(rl.top1000)
+  .page-head
+    h1 Rich list
+      span.sub The 100 largest #{coin.name} balances
+  .stats.four
+    +stat('Supply', F.compact(F.coins(sup, coin.decimals), 2), coin.symbol, 'At block #' + F.num(tip.height))
+    +stat('Holders', F.num(rl.holders), null, 'Addresses with a balance')
+    +stat('Top 10 hold', t10.toFixed(2), '%')
+    +stat('Top 100 hold', t100.toFixed(2), '%')
+  - var top = rl.rows.slice(0, 10)
+  - var maxBal = top.length ? Number(top[0].balance) : 1
+  .grid-main.section
+    section.panel
+      .panel-head
+        h2 Largest holders
+        span.aside Share of supply
+      ul.hbars
+        each r in top
+          - var e = entity(r.address)
+          li(style=e ? '--c:' + e.color : null)
+            span
+              +who(r.address, { a: 12, b: 6 })
+            .track: i(style='width:' + (100 * Number(r.balance) / maxBal).toFixed(1) + '%')
+            span.v= pct(r.balance).toFixed(2) + '%'
+    section.panel
+      .panel-head
+        h2 Distribution
+        span.aside= F.num(rl.holders) + ' holders'
+      +donut([{ label: 'Top 10', value: t10, color: '#38d5c3' }, { label: 'Top 11–100', value: t100 - t10, color: '#8e7cf8' }, { label: 'Top 101–1,000', value: t1000 - t100, color: '#5aa9ff' }, { label: 'Everyone else', value: Math.max(0, 100 - t1000), color: null }], t100.toFixed(0) + '%', 'top 100')
+  section.panel.section
+    .table-scroll
+      table.t
+        thead
+          tr
+            th.rank #
+            th Address
+            th.num Balance
+            th.num Share
+            th.num.hide-sm Txs
+            th.num.hide-sm Last active
+        tbody
+          each r, i in rl.rows
+            - var e = entity(r.address)
+            tr
+              td.rank= i + 1
+              td
+                .who
+                  if e
+                    a.tag(href=coin.base + '/address/' + r.address, style='--c:' + e.color)= e.name
+                  a.mono(href=coin.base + '/address/' + r.address, title=r.address)= F.short(r.address, e ? 8 : 18, 8)
+              td.num: +amount(r.balance, { nosym: true })
+              td.num
+                .share
+                  .bar: i(style='width:' + Math.min(100, pct(r.balance) * 4).toFixed(1) + '%')
+                  span= pct(r.balance).toFixed(2) + '%'
+              td.num.hide-sm= F.num(r.txs)
+              td.num.hide-sm: a(href=coin.base + '/block/' + r.lastHeight)= '#' + F.num(r.lastHeight)

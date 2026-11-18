@@ -1,0 +1,17 @@
+{
+  "id": "neb",
+  "name": "NEB",
+  "fullName": "Neural Engine Byte",
+  "symbol": "NEB",
+  "decimals": 8,
+  "adapter": "utxo-mysql",
+  "db": "explorer_neb",
+  "redis_prefix": "neb",
+  "rpc": "http://127.0.0.1:8432",
+  "logo": "/img/coins/neb.svg",
+  "accent": "#38d5c3",
+  "blockTime": 60,
+  "maxSupply": "18000000",
+  "tagline": "Proof of work that trains neural networks on Kepler and TESS exoplanet signals.",
+  "links": { "on GitHub": "https://github.com/SilasEigen/neb" }
+}

@@ -1,0 +1,21 @@
+{
+  "name": "suprplorer-web",
+  "version": "0.1.0",
+  "private": true,
+  "description": "suprplorer: one web app for many coins, server-rendered pages on per-coin MySQL indexes",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "@fontsource-variable/geist": "^5.3.0",
+    "@fontsource-variable/geist-mono": "^5.3.0",
+    "express": "^5.3.0",
+    "mysql2": "^3.24.6",
+    "pug": "^3.0.4",
+    "qr-image": "^3.2.0",
+    "redis": "^4.7.1",
+    "uplot": "^1.6.32"
+  },
+  "license": "MIT"
+}

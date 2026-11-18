@@ -1,0 +1,14 @@
+extends layout
+block content
+  .notice
+    h1= title
+    p= message
+    if coin
+      form.hero-search(action=coin.base + '/search', method='get', role='search', style='margin:0 auto 20px')
+        +searchIcon
+        label.sr-only(for='q-err') Search
+        input#q-err(name='q', placeholder='Block height or hash, transaction ID, address or pool name', autocomplete='off')
+        button(type='submit') Search
+      a.btn(href=coin.base + '/') Back to the #{coin.name} overview
+    else
+      a.btn(href='/') All explorers
