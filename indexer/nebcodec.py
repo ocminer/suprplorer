@@ -156,7 +156,13 @@ class Reader:
         b = self.u8()
         if b < 0xFD:
             return b
-        v, lo = {0xFD: (self.u16(), 0xFD), 0xFE: (self.u32(), 0x10000), 0xFF: (self.u64(), 0x100000000)}[b]
+        # read only the width the marker announces (a dict of calls would run all three reads)
+        if b == 0xFD:
+            v, lo = self.u16(), 0xFD
+        elif b == 0xFE:
+            v, lo = self.u32(), 0x10000
+        else:
+            v, lo = self.u64(), 0x100000000
         if v < lo:
             raise DecodeError("non-canonical varint")
         return v
