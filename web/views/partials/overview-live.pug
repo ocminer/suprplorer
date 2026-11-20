@@ -7,6 +7,14 @@ include ../mixins
     if supplyPct != null
       .meter: i(style='width:' + Math.min(100, supplyPct) + '%')
   +stat('Hashrate, 24h', hr.value, hr.unit, 'Estimated from difficulty and block times')
+    if act3h && act3h.blocks
+      - var hr3 = F.hashrate(act3h.hashrate)
+      - var d3 = act.hashrate ? (act3h.hashrate / act.hashrate - 1) * 100 : null
+      .stat-aside(title='Average over the last 3 hours, ' + F.num(act3h.blocks) + ' blocks')
+        span Last 3h
+        b #{hr3.value} #{hr3.unit}
+        if d3 != null && Math.abs(d3) >= 0.5
+          span(class=d3 > 0 ? 'up' : 'down')= (d3 > 0 ? '+' : '−') + Math.abs(d3).toFixed(Math.abs(d3) < 10 ? 1 : 0) + '%'
   +stat('Difficulty', F.num(tip.difficulty, 2), null, '24h average ' + F.num(act.difficulty, 2))
   +stat('Block time, 24h', act.blockTime ? F.duration(act.blockTime) : '–', null, F.num(act.blocks) + ' blocks, target ' + coin.blockTime + 's')
   +stat('Active miners, 24h', F.num(act.miners), null, F.num(act.txs) + ' transfers in 24h')

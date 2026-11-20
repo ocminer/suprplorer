@@ -210,11 +210,11 @@ function coinRouter(coin, redis) {
   };
 
   const overviewData = async () => {
-    const [tip, act, series, lane, miners, transfers, g] = await Promise.all([
-      D.tip(), D.activity(86400), D.series('24h'), D.blocks(60), D.miners(86400), D.transfers(8), D.genesis()]);
+    const [tip, act, act3h, series, lane, miners, transfers, g] = await Promise.all([
+      D.tip(), D.activity(86400), D.activity(3 * 3600), D.series('24h'), D.blocks(60), D.miners(86400), D.transfers(8), D.genesis()]);
     const cap = BigInt(coin.maxSupply || 0) * 10n ** BigInt(dec) + (g ? g.carryover : 0n);
     const groups = minerGroups(miners);
-    return { tip, act, series, lane, blocks: lane.slice(0, 12), miners: groups.slice(0, 8), donut: donut(groups),
+    return { tip, act, act3h, series, lane, blocks: lane.slice(0, 12), miners: groups.slice(0, 8), donut: donut(groups),
       minersTotal: miners.total, transfers, cap };
   };
 
