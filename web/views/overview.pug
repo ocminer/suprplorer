@@ -12,8 +12,12 @@ block content
     include partials/overview-live
   .grid-2.section
     - var hr24 = F.hashrate(act.hashrate)
+    - var has3 = act3h && act3h.blocks
+    - var hrHead = F.hashrate(has3 ? act3h.hashrate : act.hashrate)
     section.panel.chart-card
-      +chartHead('Hashrate', hr24.value, hr24.unit, '24h average, per 15 minutes')
+      +chartHead('Hashrate', hrHead.value, hrHead.unit, has3 ? 'Last 3h average; chart: last 24h, per 15 minutes' : '24h average, per 15 minutes')
+        if has3
+          .chart-aside 24h avg #[b #{hr24.value} #{hr24.unit}]
       .panel-body
         +chart('c-hash', series.points.map(p => p.t), series.points.map(p => p.hashrate), { format: 'hashrate' })
     section.panel.chart-card

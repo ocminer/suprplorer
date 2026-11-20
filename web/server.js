@@ -430,7 +430,7 @@ async function main() {
   app.get('/', cacheMiddleware(redis, req => `suprplorer:web:${BUILD_ID}:${coins.map(c => c.gen).join('.')}:/`, 60),
     wrap(async (req, res) => {
       const cards = await Promise.all(coins.map(async c => {
-        try { return { coin: c, tip: await c.data.tip(), act: await c.data.activity(86400) }; }
+        try { const [tip, act, act3h] = await Promise.all([c.data.tip(), c.data.activity(86400), c.data.activity(3 * 3600)]); return { coin: c, tip, act, act3h }; }
         catch { return { coin: c, tip: null, act: null }; }
       }));
       res.render('landing', { cards, coin: null, page: 'landing', title: 'Suprplorer – live block explorers by Suprnova',

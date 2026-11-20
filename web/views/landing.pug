@@ -12,13 +12,13 @@ block content
             h2= c.coin.name
             .muted(style='font-size:13.5px')= c.coin.fullName
         if c.tip
-          - var hr = F.hashrate(c.act.hashrate)
+          - var hr = F.hashrate(c.act3h && c.act3h.blocks ? c.act3h.hashrate : c.act.hashrate)
           dl
             div
               dt Height
               dd= F.num(c.tip.height)
             div
-              dt Hashrate, 24h
+              dt Hashrate, 3h
               dd #{hr.value} #{hr.unit}
             div
               dt Supply

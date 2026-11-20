@@ -61,10 +61,13 @@ mixin chartHead(title, value, unit, note)
       if note
         .note= note
     if value != null
-      .chart-value
-        = value
-        if unit
-          span.unit= unit
+      .chart-value-wrap
+        .chart-value
+          = value
+          if unit
+            span.unit= unit
+        if block
+          block
 
 //- donut of segments [{label, value, color, href}]; a null colour is the neutral tile colour
 mixin donut(segments, centerValue, centerLabel)

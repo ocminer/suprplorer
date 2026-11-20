@@ -140,6 +140,9 @@ section + section, .section { margin-top: 28px; }
 .stat-sub a { color: var(--muted); }
 .stat-aside { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 6px; margin-top: 6px; font-size: 12.5px; color: var(--dim); font-variant-numeric: tabular-nums; }
 .stat-aside > * { white-space: nowrap; }
+.chart-value-wrap { text-align: right; }
+.chart-aside { font-size: 12.5px; color: var(--dim); margin-top: 2px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.chart-aside b { color: var(--muted); font-weight: 600; }
 .stat-aside b { color: var(--muted); font-weight: 600; }
 .stat-aside .up { color: var(--accent); }
 .stat-aside .down { color: #f59e8b; }
