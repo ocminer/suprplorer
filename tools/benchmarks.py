@@ -149,7 +149,7 @@ def suprminer(coin, readme):
             gpu = cells[0].replace("*", "").strip()
             entry = {"miner": "suprminer", "version": version, "gpu": gpu, "vendor": vendor,
                      "power_w": int(pm.group(1)), "rates": {"kepler": rate[0], "tess": rate[1]},
-                     "date": (day or date.today()).isoformat(), "source": f"{SUPRMINER_URL}#readme"}
+                     "date": (day or date.today()).isoformat(), "source": f"{SUPRMINER_URL}/releases/tag/v{version}"}
             if _vkey(version) < (1, 9, 48):
                 entry["note"] = "Older release, before attempt selection (1.9.48); current versions are faster."
             if gpu not in best or _vkey(version) > _vkey(best[gpu]["version"]):

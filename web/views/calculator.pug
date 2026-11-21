@@ -45,7 +45,7 @@ block content
     .panel-head
       div
         h2 #{sym} per day by card
-        .note.calc-pool-note On #{def.name}, after #{def.fee + def.minerFee}% fees, last 24h network
+        .note.calc-pool-note On #{def.name}, after #{def.fee + def.minerFee}% fees, network of the last 3 hours
     ul.hbars.calc-bars
       each c, i in cards
         - var day = c.grossPerDay * keep
@@ -89,7 +89,7 @@ block content
                     span.unverified(title=c.note)  *
                   |
                   |
-                  a.ext(href=c.source, rel='noopener nofollow ugc', target='_blank', title='Source of the measurement, ' + c.date) ↗
+                  a.ext(href=c.source, rel='noopener nofollow ugc', target='_blank', title='Release notes of ' + c.miner + ' ' + c.version + ', measured ' + c.date) ↗
               each m in coin.models
                 td.num= rate(c.rates[m.id])
               td.num: b(data-f='day')= fmtC(day)
@@ -102,7 +102,13 @@ block content
       | Break-even: the #{sym} price at which a day of coins pays a day of electricity.
       if cards.some(c => c.note)
         |  * Older miner release; current versions are faster.
-      |  Rates come from the miners' published benchmarks; the newest suprminer results are imported every day.
+      |  Rates come from the miners' published benchmarks, measured on two fixed models; on the live network a card's rate moves from block to block, so treat the yield as an estimate.
+      if minerRelease
+        |  Hashrates of
+        |
+        a(href=minerRelease.url, rel='noopener', target='_blank') #{minerRelease.miner} #{minerRelease.version}
+        |
+        | , the latest release with benchmarks (imported every day).
 
   section.panel.section
     .panel-head
@@ -145,5 +151,5 @@ block content
     .panel-head
       h2 How the calculator works
     .panel-body.prose
-      p #{coin.name} alternates its models by block height, and a card runs at a very different speed on each, so a single hashrate number would mislead. For every model the calculator takes the network hashrate and the number of blocks a day from the last 24 hours, and the card's own rate on that model. The card's expected blocks a day on a model are that model's blocks a day times the card's share of that model's hashrate; the sum over the models, times the miner reward of #{F.num(minerReward, 2)} #{sym}, is the yield.
+      p #{coin.name} alternates its models by block height, and a card runs at a very different speed on each, so a single hashrate number would mislead. For every model the calculator takes the network hashrate and the number of blocks a day from the last 3 hours (the hashrate climbs fast, so a day average would overstate today's yield), and the card's own rate on that model. The card's expected blocks a day on a model are that model's blocks a day times the card's share of that model's hashrate; the sum over the models, times the miner reward of #{F.num(minerReward, 2)} #{sym}, is the yield.
       p These are expectations: on a pool the payouts follow them closely, solo the time between blocks varies a lot. Rising network hashrate lowers the yield over time; the 30-day chart shows how fast it has been moving.

@@ -463,8 +463,10 @@ function coinRouter(coin, redis) {
   const miningModel = async () => {
     const models = coin.models || [];
     const K = models.length;
-    const WIN = 86400;
-    const [tip, stats, d1] = await Promise.all([D.tip(), D.modelStats(WIN, K), D.issuance(WIN)]);
+    // the network of the last 3 hours (as the headline hashrate elsewhere): the hashrate climbs fast, a day
+    // average would overstate what a card finds today; fees per block over a day (they are sparse)
+    const WIN = 3 * 3600;
+    const [tip, stats, d1] = await Promise.all([D.tip(), D.modelStats(WIN, K), D.issuance(86400)]);
     const net = CALC.network(models, stats, WIN);
     const reward = Number(rewardAt(tip.height)) / 10 ** dec;
     const project = Math.floor(Number(rewardAt(tip.height)) * 5 / 100) / 10 ** dec;
@@ -484,7 +486,12 @@ function coinRouter(coin, redis) {
       return { gpu: b.gpu, vendor: b.vendor, miner: b.miner, version: b.version, power: b.power_w, rates: b.rates, date: b.date,
         source: b.source, note: b.note || null, auto: b.auto, blocksPerDay: bpd, grossPerDay: bpd * minerReward };
     }).sort((a, b) => b.grossPerDay - a.grossPerDay);
-    return { models, K, tip, net, reward, project, feesPerBlock, minerReward, pools, cards, d1 };
+    const vk = v => String(v).split('.').map(Number);
+    const newer = (a, b) => { const x = vk(a), y = vk(b); for (let i = 0; i < 3; i++) if (x[i] !== y[i]) return x[i] > y[i]; return false; };
+    const latest = cards.filter(c => c.miner === 'suprminer').reduce((a, c) => (!a || newer(c.version, a.version) ? c : a), null);
+    const minerRelease = latest ? { miner: 'suprminer', version: latest.version,
+      url: `https://github.com/ocminer/suprminer/releases/tag/v${latest.version}` } : null;
+    return { models, K, tip, net, reward, project, feesPerBlock, minerReward, pools, cards, d1, minerRelease, netWindow: WIN };
   };
 
   // market: price from the exchange (via the price feed), market cap, what mining earns in dollars
@@ -510,13 +517,13 @@ function coinRouter(coin, redis) {
     render(res, 'market', `${coin.name} Price and Market – ${price ? '$' + F.num(usd, usd < 1 ? 4 : 2) : 'not traded'}`, {
       desc: `${coin.name} (${coin.symbol}) price${price ? ' on ' + price.source + ' ' + price.market : ''}, 24h change and volume, market cap, what miners earn per day in dollars, hashprice and GPU mining profit at the current price.`,
       range, price, hist, since, supply, maxSupply, earned24, issued24, ths, POWER, sui, cards,
-      hashprice: usd != null && ths > 0 ? earned24 * usd / ths : null, minerReward: mm.minerReward });
+      hashprice: usd != null && ths > 0 ? earned24 * usd / ths : null, minerReward: mm.minerReward, minerRelease: mm.minerRelease });
   }));
 
   r.get('/calculator', cached(), wrap(async (req, res) => {
     if (!(coin.models || []).length) return fail(res, 404, 'Not available', 'This coin has no mining calculator yet.');
     const [mm, mtrend] = await Promise.all([miningModel(), D.modelSeries('30d', (coin.models || []).length)]);
-    const { models, tip, net, reward, project, feesPerBlock, minerReward, pools, cards } = mm;
+    const { models, tip, net, reward, project, feesPerBlock, minerReward, pools, cards, minerRelease } = mm;
     const priceRaw = res.locals.price ? JSON.stringify(res.locals.price) : null;
     // 30 days of yield for the strongest cards: coins per day per bucket at the network of that bucket
     const trendCards = cards.filter((c, i, a) => a.findIndex(x => x.gpu === c.gpu) === i).slice(0, 4);
@@ -534,7 +541,7 @@ function coinRouter(coin, redis) {
     const price = priceRaw ? JSON.parse(priceRaw) : null;
     render(res, 'calculator', `${coin.name} Mining Calculator – coins per GPU, pool fees and power cost`, {
       desc: `${coin.name} mining calculator: expected ${coin.symbol} per day for every benchmarked GPU on each pool, after fees, with power cost and break-even price, from the live network hashrate of each model.`,
-      tip, net, cards, pools, minerReward, reward, project, feesPerBlock, trend, price, defaultPower: 0.30,
+      tip, net, cards, pools, minerReward, reward, project, feesPerBlock, trend, price, defaultPower: 0.30, minerRelease,
       calcData: { models: models.map(m => ({ id: m.id, name: m.name })), net: net.map(n => ({ id: n.id, hashrate: n.hashrate, blocksPerDay: n.blocksPerDay })),
         minerReward, pools: pools.map(p => ({ name: p.name, fee: p.fee, minerFee: p.minerFee })), price: price && price.usd ? price.usd : null,
         cards: cards.map(c => ({ gpu: c.gpu, power: c.power, blocksPerDay: c.blocksPerDay })) } });
