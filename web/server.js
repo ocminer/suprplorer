@@ -595,6 +595,16 @@ function coinRouter(coin, redis) {
       res.json({ height: t.height, time: t.time, hash: t.hash });
     } catch { res.status(503).json({}); }
   });
+  // the current market price as price_watch publishes it; 503 when there is no fresh price
+  r.get('/_/price', async (req, res) => {
+    res.set('Cache-Control', 'public, max-age=60');
+    let p = null;
+    try { p = JSON.parse(await redis.get(`${coin.prefix}:price`)); } catch {}
+    if (!p || !(p.usd > 0)) return res.status(503).json({ coin: coin.symbol, usd: null, error: 'no fresh price' });
+    res.json({ coin: coin.symbol, usd: p.usd, btc: p.btc, change24hPct: p.change24h, high24h: p.high24h,
+      low24h: p.low24h, volume24hCoin: p.volumeCoin, volume24hUsd: p.volumeUsd, source: p.source,
+      market: p.market, url: p.url || null, fetchedAt: p.fetchedAt, checkedAt: p.checked });
+  });
 
   r.get('/qr/:addr.svg', (req, res) => {
     if (!/^[a-zA-Z0-9:]{1,100}$/.test(req.params.addr)) return res.status(400).end();

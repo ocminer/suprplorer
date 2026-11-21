@@ -16,7 +16,8 @@ coin node ──RPC──> indexer (per coin, Python) ──> MySQL explorer_<co
 - **One web app for all coins** (`web/`): Express + Pug templates (`web/views/`), our own design
   system (`web/public/css/app.css`, Geist fonts, uPlot charts, all self-hosted), data from each coin's
   MySQL index through an adapter (`web/adapters/`). No public API: pages are server-rendered, the
-  browser only fetches the live tip (`/<coin>/_/tip`) and overview fragments.
+  browser only fetches the live tip (`/<coin>/_/tip`) and overview fragments. The one exception is
+  `/<coin>/_/price`, the current market price as JSON (503 when there is no fresh price).
 - **SEO**: canonical URLs on https://suprplorer.cc (all three domains serve the same pages),
   `robots.txt`, `sitemap.xml` (pages, every block, labelled and top-1,000 addresses), Open Graph
   images, JSON-LD (Organization, WebSite search, breadcrumbs). Google Analytics and Search Console
