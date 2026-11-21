@@ -2,10 +2,10 @@
   "$comment": "Public address labels for NEB. To add your pool, open a pull request; see CONTRIBUTING.md.",
   "coin": "neb",
   "labels": [
-    { "address": "neb1qs5szuxufhqrtlwz03dpmddhh37quzdwuz9z3um6hd39dgqcy7msfzya20", "name": "Suprnova", "category": "pool", "url": "https://neb.suprnova.cc" },
-    { "address": "neb1u0cfvvkujr7aq9uqq68ufqmxl6zx62mxymld7fnz55zaajqrqtzqem9282", "name": "ariabrain", "category": "pool" },
-    { "address": "neb1s5wmrlrj6fxa4ckwnvpc6ltwcxzewc2vcjwud30fmk8j2fyvga6sn3s3gx", "name": "nurserypool", "category": "pool" },
-    { "address": "neb13qttke92k6tshttg0d5m5ua0a7dv3948606efr3yxh4038f0sw8sxredkk", "name": "cryopool", "category": "pool" },
-    { "address": "neb1jf3a5wm3rmmqncajwsw7822ymkp89vqrguaeaf8nzgsegfn4flmspzlpj0", "name": "pearlhash", "category": "pool" }
+    {"address": "neb1qs5szuxufhqrtlwz03dpmddhh37quzdwuz9z3um6hd39dgqcy7msfzya20", "name": "Suprnova", "category": "pool", "url": "https://neb.suprnova.cc", "fee": 1, "miner_fee": 0, "fee_source": "https://github.com/ocminer/suprminer#readme"},
+    {"address": "neb1u0cfvvkujr7aq9uqq68ufqmxl6zx62mxymld7fnz55zaajqrqtzqem9282", "name": "ariabrain", "category": "pool", "url": "https://pool.ariabrain.com/neb.html", "fee": 1, "miner_fee": 1, "fee_source": "https://pool.ariabrain.com/neb.html"},
+    {"address": "neb1s5wmrlrj6fxa4ckwnvpc6ltwcxzewc2vcjwud30fmk8j2fyvga6sn3s3gx", "name": "nurserypool", "category": "pool", "url": "https://neb.nurserypool.com", "fee": 1, "fee_source": "https://neb.nurserypool.com"},
+    {"address": "neb13qttke92k6tshttg0d5m5ua0a7dv3948606efr3yxh4038f0sw8sxredkk", "name": "cryopool", "category": "pool"},
+    {"address": "neb1jf3a5wm3rmmqncajwsw7822ymkp89vqrguaeaf8nzgsegfn4flmspzlpj0", "name": "pearlhash", "category": "pool", "fee": 5}
   ]
 }

@@ -23,7 +23,7 @@ import nebcodec as nc
 
 CATEGORIES = ("pool", "exchange", "project", "holder", "burn", "other")
 FILE_CATEGORIES = ("pool", "exchange", "project", "holder", "other")
-ENTRY_KEYS = {"address", "name", "category", "url"}
+ENTRY_KEYS = {"address", "name", "category", "url", "fee", "miner_fee", "fee_source"}
 NAME_RE = re.compile(r"^[\w][\w .,&+'()/:-]*$")
 URL_RE = re.compile(r"^https://[A-Za-z0-9.-]+\.[A-Za-z]{2,}(?::\d{1,5})?(?:/[A-Za-z0-9._~%!$&'()*+,;=:@/?#-]*)?$")
 
@@ -104,7 +104,24 @@ def load_file(coin, path):
             errors.append(f"{where}: category must be one of {', '.join(FILE_CATEGORIES)}")
         if url is not None and (len(url) > 255 or not URL_RE.match(url)):
             errors.append(f"{where}: url must be a plain https:// address (max 255 characters)")
-        entries.append({"address": addr, "name": name, "category": cat, "url": url})
+        fees = {}
+        for k in ("fee", "miner_fee"):
+            v = e.get(k)
+            if v is None:
+                continue
+            if isinstance(v, bool) or not isinstance(v, (int, float)) or not 0 <= v <= 100 or round(v, 2) != v:
+                errors.append(f"{where}: {k} must be a percentage from 0 to 100 with at most 2 decimals")
+            else:
+                fees[k] = float(v)
+        src = e.get("fee_source")
+        if src is not None and (not isinstance(src, str) or len(src) > 255 or not URL_RE.match(src)):
+            errors.append(f"{where}: fee_source must be a plain https:// link to where the fee is published")
+        if src is not None and not fees:
+            errors.append(f"{where}: fee_source given without fee or miner_fee")
+        if fees and cat != "pool":
+            errors.append(f"{where}: fees only apply to category pool")
+        entries.append({"address": addr, "name": name, "category": cat, "url": url,
+                        "fee": fees.get("fee"), "miner_fee": fees.get("miner_fee"), "fee_source": src})
     return entries, errors
 
 
@@ -116,9 +133,13 @@ def connect(coin):
 
 
 def ensure_source_column(cur):
-    cur.execute("SHOW COLUMNS FROM labels LIKE 'source'")
-    if not cur.fetchone():
+    cur.execute("SHOW COLUMNS FROM labels")
+    have = {r[0] for r in cur.fetchall()}
+    if "source" not in have:
         cur.execute("ALTER TABLE labels ADD COLUMN source VARCHAR(8) NOT NULL DEFAULT 'local' AFTER note")
+    if "fee" not in have:
+        cur.execute("ALTER TABLE labels ADD COLUMN fee DECIMAL(5,2) NULL AFTER url, "
+                    "ADD COLUMN miner_fee DECIMAL(5,2) NULL AFTER fee, ADD COLUMN fee_source VARCHAR(255) NULL AFTER miner_fee")
 
 
 def bump_generation(coin):
@@ -131,19 +152,23 @@ def bump_generation(coin):
 
 def sync(coin, cur, entries):
     """Upsert every file entry as source 'repo' and drop repo labels no longer in the file."""
-    cur.execute("SELECT address, label, category, url, source FROM labels")
-    have = {r[0]: r[1:] for r in cur.fetchall()}
+    cur.execute("SELECT address, label, category, url, CAST(fee AS DOUBLE), CAST(miner_fee AS DOUBLE), fee_source, source "
+                "FROM labels")
+    have = {r[0]: (r[1], r[2], r[3], r[4], r[5], r[6], r[7]) for r in cur.fetchall()}
     changes = 0
     for e in entries:
-        if have.get(e["address"]) == (e["name"], e["category"], e["url"], "repo"):
+        row = (e["name"], e["category"], e["url"], e["fee"], e["miner_fee"], e["fee_source"], "repo")
+        if have.get(e["address"]) == row:
             continue
-        cur.execute("INSERT INTO labels (address, label, category, url, source) VALUES (%s,%s,%s,%s,'repo') "
-                    "ON DUPLICATE KEY UPDATE label=VALUES(label), category=VALUES(category), url=VALUES(url), "
-                    "source='repo'", (e["address"], e["name"], e["category"], e["url"]))
+        cur.execute("INSERT INTO labels (address, label, category, url, fee, miner_fee, fee_source, source) "
+                    "VALUES (%s,%s,%s,%s,%s,%s,%s,'repo') ON DUPLICATE KEY UPDATE label=VALUES(label), "
+                    "category=VALUES(category), url=VALUES(url), fee=VALUES(fee), miner_fee=VALUES(miner_fee), "
+                    "fee_source=VALUES(fee_source), source='repo'",
+                    (e["address"], e["name"], e["category"], e["url"], e["fee"], e["miner_fee"], e["fee_source"]))
         print(f"{'updated' if e['address'] in have else 'added'}  {e['name']} ({e['category']}) {e['address']}")
         changes += 1
     keep = {e["address"] for e in entries}
-    for addr, (label, _cat, _url, source) in have.items():
+    for addr, (label, *_rest, source) in have.items():
         if source == "repo" and addr not in keep:
             cur.execute("DELETE FROM labels WHERE address=%s AND source='repo'", (addr,))
             print(f"removed  {label} {addr}")

@@ -9,7 +9,8 @@ example [`labels/neb.json`](labels/neb.json).
 1. Fork this repository and add an entry to the file of your coin:
 
    ```json
-   { "address": "neb1…", "name": "Your Pool", "category": "pool", "url": "https://yourpool.example" }
+   { "address": "neb1…", "name": "Your Pool", "category": "pool", "url": "https://yourpool.example",
+     "fee": 1, "fee_source": "https://yourpool.example/fees" }
    ```
 
    | field | required | rules |
@@ -18,6 +19,9 @@ example [`labels/neb.json`](labels/neb.json).
    | `name` | yes | 1–48 characters: letters, digits, spaces and `. , & + ' ( ) / : - _` |
    | `category` | yes | `pool`, `exchange`, `project`, `holder` or `other` |
    | `url` | no | a plain `https://` link to your site |
+   | `fee` | no (pools) | pool fee in percent, e.g. `1` or `0.5` |
+   | `miner_fee` | no (pools) | fee of your own miner software in percent, if miners must use it |
+   | `fee_source` | no (pools) | `https://` link where the fee is published; without it the explorer marks the fee as not verified |
 
    Several addresses may share the same name (for example a pool with more than one payout address).
 

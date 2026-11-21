@@ -108,7 +108,9 @@ async function refreshLabels(coin) {
     used.add(i);
   }
   const map = {};
+  const pct = v => (v == null ? null : Number(v));
   for (const r of rows) map[r.address] = { name: r.label, category: r.category, url: r.url || null,
+    fee: pct(r.fee), minerFee: pct(r.miner_fee), feeSource: r.fee_source || null,
     color: r.category === 'burn' ? '#6b7280' : colors[r.label] };
   coin.labelMap = map;
 }
@@ -191,13 +193,16 @@ function coinRouter(coin, redis) {
   const poolStack = async (range, pools) => {
     const ms = await D.minerSeries(range);
     const names = pools.slice(0, 7).map(p => p.name);
-    const buckets = new Map();
+    const buckets = new Map(), coins = new Map();
     for (const r of ms.rows) {
       const e = entity(r.address);
       const k = e && names.includes(e.name) ? e.name : '~other';
       const row = buckets.get(r.t) || {};
       row[k] = (row[k] || 0) + r.n;
       buckets.set(r.t, row);
+      const cr = coins.get(r.t) || {};
+      cr[k] = (cr[k] || 0) + r.earned / 10 ** dec;
+      coins.set(r.t, cr);
     }
     if (!buckets.size) return null;
     const ts = [...buckets.keys()].sort((a, b) => a - b);
@@ -206,7 +211,20 @@ function coinRouter(coin, redis) {
     const colorOf = n => { const e = Object.values(coin.labelMap).find(l => l.name === n); return e ? e.color : F.colorFor(n); };
     const series = names.map(n => ({ label: n, color: colorOf(n), y: x.map(t => (buckets.get(t) || {})[n] || 0) }));
     series.push({ label: 'Other miners', color: '#334061', y: x.map(t => (buckets.get(t) || {})['~other'] || 0) });
-    return { x, series, bucket: ms.bucket };
+    // coins mined, cumulative over the range, per pool
+    const cumulative = series.map(sr => {
+      const key = sr.label === 'Other miners' ? '~other' : sr.label;
+      let run = 0;
+      return { label: sr.label, color: sr.label === 'Other miners' ? '#6b7699' : sr.color,
+        y: x.map(t => (run += (coins.get(t) || {})[key] || 0)) };
+    });
+    // share of blocks per pool, smoothed over a rolling window of buckets
+    const W = 4;
+    const totals = x.map(t => Object.values(buckets.get(t) || {}).reduce((a, b) => a + b, 0));
+    const shareLines = series.filter(sr => sr.label !== 'Other miners').slice(0, 6).map(sr => ({ label: sr.label, color: sr.color,
+      y: x.map((_, i) => { let n = 0, d = 0; for (let j = Math.max(0, i - W + 1); j <= i; j++) { n += sr.y[j]; d += totals[j]; }
+        return d ? (100 * n) / d : null; }) }));
+    return { x, series, bucket: ms.bucket, cumulative, shareLines };
   };
 
   const overviewData = async () => {
@@ -294,14 +312,37 @@ function coinRouter(coin, redis) {
   r.get('/pools', cached(), wrap(async (req, res) => {
     const range = rangeOf(req);
     const secs = RANGES[range];
-    const [act, miners] = await Promise.all([D.activity(secs || 1e10), D.miners(secs)]);
+    const K = (coin.models || []).length;
+    const [act, miners, byModel, models] = await Promise.all([D.activity(secs || 1e10), D.miners(secs),
+      K > 1 ? D.minersByModel(secs, K) : [], K > 1 ? D.modelStats(secs || 1e10, K) : null]);
     const groups = minerGroups(miners);
+    // estimated hashrate per group and model: its share of that model's blocks times the model's network hashrate
+    if (models) {
+      const slotTotals = models.map(m => m.blocks || 0);
+      const per = new Map();
+      for (const r of byModel) {
+        const e = entity(r.address);
+        const key = e ? 'L:' + e.name : 'A:' + r.address;
+        const v = per.get(key) || new Array(K).fill(0);
+        v[r.slot] += r.n;
+        per.set(key, v);
+      }
+      for (const g of groups) {
+        const v = per.get(g.key) || new Array(K).fill(0);
+        g.models = v.map((n, i) => ({ blocks: n, share: slotTotals[i] ? n / slotTotals[i] : 0,
+          hashrate: slotTotals[i] ? (n / slotTotals[i]) * models[i].hashrate : 0 }));
+      }
+    }
+    for (const g of groups) {
+      const l = g.name ? Object.values(coin.labelMap).find(x => x.name === g.name) : null;
+      g.fee = l ? l.fee : null; g.minerFee = l ? l.minerFee : null; g.feeSource = l ? l.feeSource : null; g.url = l ? l.url : null;
+    }
     const pools = groups.filter(g => g.category === 'pool');
     const others = groups.filter(g => g.category !== 'pool');
     const other = others.reduce((o, g) => ({ blocks: o.blocks + g.blocks, earned: o.earned + g.earned }), { blocks: 0, earned: 0n });
     render(res, 'pools', `${coin.name} Mining Pools – share of blocks`, {
       desc: `Which ${coin.name} mining pools find the blocks: pool shares, blocks per pool over time, rewards and payout addresses.`, range, act, pools, other, others: others.slice(0, 25),
-      donut: donut(groups, 7), stack: await poolStack(range, pools),
+      donut: donut(groups, 7), stack: await poolStack(range, pools), models,
       othersCount: others.length, total: miners.total, poolBlocks: pools.reduce((s, p) => s + p.blocks, 0),
       poolEarned: pools.reduce((s, p) => s + p.earned, 0n) });
   }));

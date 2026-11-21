@@ -205,10 +205,11 @@ class UtxoMysqlAdapter {
     } else {
       bucket = Math.max(bucket, Math.ceil(span / 60 / 900) * 900); // at most ~60 bars
     }
-    const rows = await this.q('SELECT FLOOR(b.time / ?) * ? AS bk, a.address, COUNT(*) n FROM blocks b ' +
+    const rows = await this.q('SELECT FLOOR(b.time / ?) * ? AS bk, a.address, COUNT(*) n, ' +
+      'SUM(CAST(b.coinbase_out AS SIGNED) - FLOOR(b.reward * 5 / 100)) earned FROM blocks b ' +
       'JOIN addresses a ON a.id=b.miner_address_id WHERE b.time > ? AND b.height > 0 GROUP BY bk, a.address ORDER BY bk',
       [bucket, bucket, t.time - span]);
-    return { bucket, rows: rows.map(r => ({ t: Number(r.bk), address: r.address, n: Number(r.n) })) };
+    return { bucket, rows: rows.map(r => ({ t: Number(r.bk), address: r.address, n: Number(r.n), earned: Number(r.earned) })) };
   }
 
   // latest transfers (coinbase transactions excluded)
@@ -230,6 +231,14 @@ class UtxoMysqlAdapter {
     const total = rows.reduce((s, r) => s + Number(r.n), 0);
     return { total, rows: rows.map(r => ({ address: r.address, blocks: Number(r.n), earned: BigInt(r.earned),
       last: Number(r.last), lastTime: Number(r.last_time), first: Number(r.first) })) };
+  }
+
+  // blocks per payout address and model (slot = height mod K) over the last `seconds`
+  async minersByModel(seconds, k = 2) {
+    const t = await this.tip();
+    const rows = await this.q('SELECT a.address, b.height % ? slot, COUNT(*) n FROM blocks b JOIN addresses a ' +
+      'ON a.id=b.miner_address_id WHERE b.time > ? AND b.height > 0 GROUP BY a.address, slot', [k, seconds ? t.time - seconds : 0]);
+    return rows.map(r => ({ address: r.address, slot: Number(r.slot), n: Number(r.n) }));
   }
 
   // ---------------------------------------------------------------- objects
@@ -355,8 +364,14 @@ class UtxoMysqlAdapter {
   // ---------------------------------------------------------------- misc
 
   async labels() {
-    const auto = await this.q('SELECT address, label, NULL category, NULL url FROM addresses WHERE label IS NOT NULL');
-    const manual = await this.q('SELECT address, label, category, url FROM labels');
+    const auto = await this.q('SELECT address, label, NULL category, NULL url, NULL fee, NULL miner_fee, NULL fee_source ' +
+      'FROM addresses WHERE label IS NOT NULL');
+    let manual;
+    try {
+      manual = await this.q('SELECT address, label, category, url, fee, miner_fee, fee_source FROM labels');
+    } catch (e) { // before the first labels sync added the fee columns
+      manual = await this.q('SELECT address, label, category, url, NULL fee, NULL miner_fee, NULL fee_source FROM labels');
+    }
     return [...auto, ...manual];
   }
 

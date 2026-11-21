@@ -173,6 +173,9 @@ CREATE TABLE IF NOT EXISTS labels (
   label         VARCHAR(128) NOT NULL,
   category      VARCHAR(32) NOT NULL DEFAULT 'other', -- pool, exchange, project, holder, burn, other
   url           VARCHAR(255) NULL,
+  fee           DECIMAL(5,2) NULL,                    -- pool fee in percent (labels file)
+  miner_fee     DECIMAL(5,2) NULL,                    -- fee of the pool's own miner, percent
+  fee_source    VARCHAR(255) NULL,                    -- where the fee is published; NULL = reported, not verified
   note          VARCHAR(255) NULL,
   source        VARCHAR(8) NOT NULL DEFAULT 'local',  -- 'repo' = labels/<coin>.json (suprplorer-label sync), 'local' = CLI
   updated_at    TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP

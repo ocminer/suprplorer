@@ -29,6 +29,66 @@ block content
         h2 Share of blocks
         span.aside= span
       +donut(donut, share.toFixed(0) + '%', 'known pools')
+  if stack && stack.cumulative
+    - var stLabel = stack.bucket >= 3600 ? 'per ' + (stack.bucket / 3600) + ' hours' : 'per ' + (stack.bucket / 60) + ' minutes'
+    .grid-2.section
+      section.panel.chart-card
+        +chartHead('Coins mined per pool', F.compact(F.coins(poolEarned, coin.decimals), 2), coin.symbol, 'Cumulative rewards and fees to each pool, ' + span + '; project share excluded')
+        .panel-body
+          +chart('p-coins', stack.x, null, { format: 'compact', unit: coin.symbol, lines: stack.cumulative })
+        .legend
+          each sr in stack.cumulative
+            span
+              i.dot(style='--c:' + sr.color)
+              | #{sr.label}
+              b= F.num(sr.y[sr.y.length - 1], 0)
+      section.panel.chart-card
+        +chartHead('Share of blocks over time', null, null, 'Each pool\'s share of all blocks, rolling over 4 buckets ' + stLabel)
+        .panel-body
+          +chart('p-share', stack.x, null, { format: 'int', unit: '%', zero: true, lines: stack.shareLines })
+        .legend
+          each sr in stack.shareLines
+            - var lastV = sr.y.filter(v => v != null).slice(-1)[0]
+            span
+              i.dot(style='--c:' + sr.color)
+              | #{sr.label}
+              b= lastV != null ? lastV.toFixed(0) + '%' : '–'
+  if models && coin.models
+    section.panel.section
+      .panel-head
+        div
+          h2 Estimated hashrate per model
+          .note Each miner's share of the #{coin.models.map(m => m.name).join(' and ')} blocks times that model's network hashrate, #{span}. Hardware differs, so a pool can be strong on one model and weak on the other.
+      .table-scroll
+        table.t.models-t
+          thead
+            tr
+              th Miner
+              each m in coin.models
+                th.num(style='--c:' + m.color)
+                  i.dot(style='--c:' + m.color)
+                  | #{m.name}
+          tbody
+            each g in pools.concat(others.slice(0, 3))
+              if g.models
+                tr
+                  td
+                    if g.name
+                      a.tag(href=coin.base + '/address/' + g.address, style='--c:' + g.color)= g.name
+                    else
+                      +who(g.address, { a: 10, b: 4 })
+                  each mm, i in g.models
+                    - var h = F.hashrate(mm.hashrate)
+                    td.num
+                      .share(style='--c:' + coin.models[i].color)
+                        .bar: i(style='width:' + (mm.share * 100).toFixed(1) + '%')
+                        span #{h.value} #{h.unit}
+                      .dim(style='font-size:12.5px') #{(mm.share * 100).toFixed(1)}% of #{coin.models[i].name} blocks
+            tr.total
+              td Network
+              each m, i in coin.models
+                - var h = F.hashrate(models[i].hashrate)
+                td.num: b #{h.value} #{h.unit}
   section.panel.section
     .panel-head
       h2 Pools
@@ -41,24 +101,40 @@ block content
             th.num Blocks
             th.num Share
             th.num Earned
+            th.num(title='Pool fee plus the fee of the pool\'s own miner, as published') Fee
             th.num.hide-sm Payout addresses
             th.num Last block
         tbody
           each p in pools
             tr
-              td: a.tag(href=coin.base + '/address/' + p.address, style='--c:' + p.color)= p.name
+              td
+                a.tag(href=coin.base + '/address/' + p.address, style='--c:' + p.color)= p.name
+                if p.url
+                  a.ext(href=p.url, rel='noopener nofollow ugc', target='_blank', title='Pool website', aria-label=p.name + ' website') ↗
               td.num: a(href=coin.base + '/address/' + p.address + '/blocks')= F.num(p.blocks)
               td.num
                 .share(style='--c:' + p.color)
                   .bar: i(style='width:' + p.share.toFixed(1) + '%')
                   span= p.share.toFixed(1) + '%'
               td.num: +amount(p.earned, { nosym: true })
+              td.num
+                if p.fee != null
+                  - var tot = p.fee + (p.minerFee || 0)
+                  span(title=(p.minerFee ? p.fee + '% pool + ' + p.minerFee + '% miner fee' : p.fee + '% pool fee') + (p.feeSource ? '' : ', reported, not verified'))
+                    = (Math.round(tot * 100) / 100) + '%'
+                    if !p.feeSource
+                      span.unverified *
+                  if p.minerFee
+                    .dim(style='font-size:12.5px') incl. #{p.minerFee}% miner
+                else
+                  span.dim(title='Fee not known yet') –
               td.num.hide-sm= p.addresses
               td.num
                 a(href=coin.base + '/block/' + p.last)= '#' + F.num(p.last)
                 .dim(style='font-size:12.5px'): +age(p.lastTime)
           if !pools.length
-            tr: td.empty(colspan=6) No labelled pool found a block in this range.
+            tr: td.empty(colspan=7) No labelled pool found a block in this range.
+    .table-note Fees as published by each pool. * Reported to us but not verified. Pools can add or correct their fee with a pull request to the labels file on GitHub.
   section.panel.section
     .panel-head
       h2 Unlabelled miners
