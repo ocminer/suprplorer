@@ -127,6 +127,103 @@ class UtxoMysqlAdapter {
     return { blocks: Number(r.n), issued: BigInt(r.issued), fees: BigInt(r.fees) };
   }
 
+  // first height inside a time window (heights are cheaper to filter on than times)
+  async heightSince(seconds) {
+    const t = await this.tip();
+    if (!seconds) return 1;
+    const [r] = await this.q('SELECT MIN(height) h FROM blocks WHERE time > ?', [t.time - seconds]);
+    return r && r.h != null ? Number(r.h) : t.height + 1;
+  }
+
+  // transfers (coinbase excluded), value moved to others, fees, active and new addresses per bucket
+  async activitySeries(range = '24h') {
+    await this.genesis();
+    const t = await this.tip();
+    let { span, bucket } = RANGES[range] || RANGES['24h'];
+    if (!span) {
+      span = Math.max(3600, t.time - this.g.time);
+      bucket = Math.max(3600, Math.ceil(span / 120 / 3600) * 3600);
+    } else {
+      bucket = Math.max(bucket, 3600);
+    }
+    const h0 = await this.heightSince(span);
+    const [txs, moved, active, fresh] = await Promise.all([
+      this.q('SELECT FLOOR(b.time / ?) * ? bk, COUNT(*) n, SUM(t.fee) fees FROM txs t JOIN blocks b ON b.height=t.height ' +
+        'WHERE t.height >= ? AND t.is_coinbase=0 GROUP BY bk', [bucket, bucket, h0]),
+      // value that reached addresses that did not pay into the same transaction (change excluded)
+      this.q('SELECT FLOOR(b.time / ?) * ? bk, SUM(l.received) v FROM ledger l JOIN txs t ON t.id=l.tx_id ' +
+        'JOIN blocks b ON b.height=l.height WHERE l.height >= ? AND t.is_coinbase=0 AND l.sent=0 GROUP BY bk', [bucket, bucket, h0]),
+      this.q('SELECT FLOOR(b.time / ?) * ? bk, COUNT(DISTINCT l.address_id) n FROM ledger l JOIN blocks b ON b.height=l.height ' +
+        'WHERE l.height >= ? GROUP BY bk', [bucket, bucket, h0]),
+      this.q('SELECT FLOOR(b.time / ?) * ? bk, COUNT(*) n FROM addresses a JOIN blocks b ON b.height=a.first_height ' +
+        'WHERE a.first_height >= ? GROUP BY bk', [bucket, bucket, h0]),
+    ]);
+    const keys = new Set();
+    const m = rows => { const x = new Map(); for (const r of rows) { keys.add(Number(r.bk)); x.set(Number(r.bk), r); } return x; };
+    const [T, M, A, N] = [m(txs), m(moved), m(active), m(fresh)];
+    const x = [...keys].sort((a, b) => a - b);
+    const fill = [];
+    if (x.length) for (let b = x[0]; b <= x[x.length - 1]; b += bucket) fill.push(b);
+    const dec = 10 ** this.coin.decimals;
+    return { bucket, x: fill,
+      transfers: fill.map(b => (T.get(b) ? Number(T.get(b).n) : 0)),
+      fees: fill.map(b => (T.get(b) ? Number(T.get(b).fees) / dec : 0)),
+      moved: fill.map(b => (M.get(b) ? Number(M.get(b).v) / dec : 0)),
+      active: fill.map(b => (A.get(b) ? Number(A.get(b).n) : 0)),
+      fresh: fill.map(b => (N.get(b) ? Number(N.get(b).n) : 0)) };
+  }
+
+  // totals over a window, coinbase excluded
+  async activityTotals(seconds) {
+    const h0 = await this.heightSince(seconds);
+    const [[a], [b], [c], [d]] = await Promise.all([
+      this.q('SELECT COUNT(*) n, COALESCE(SUM(fee), 0) fees FROM txs WHERE height >= ? AND is_coinbase=0', [h0]),
+      this.q('SELECT COALESCE(SUM(l.received), 0) v FROM ledger l JOIN txs t ON t.id=l.tx_id WHERE l.height >= ? ' +
+        'AND t.is_coinbase=0 AND l.sent=0', [h0]),
+      this.q('SELECT COUNT(DISTINCT address_id) n FROM ledger WHERE height >= ?', [h0]),
+      this.q('SELECT COUNT(*) n FROM addresses WHERE first_height >= ?', [h0]),
+    ]);
+    return { transfers: Number(a.n), fees: BigInt(a.fees), moved: BigInt(b.v), active: Number(c.n), fresh: Number(d.n) };
+  }
+
+  // per address: sent and received in transfers (coinbase excluded) over a window, with its cluster
+  async flows(seconds) {
+    const h0 = await this.heightSince(seconds);
+    const rows = await this.q('SELECT a.address, a.cluster_id, SUM(l.sent) sent, SUM(l.received) recv, COUNT(*) n ' +
+      'FROM ledger l JOIN txs t ON t.id=l.tx_id JOIN addresses a ON a.id=l.address_id WHERE l.height >= ? AND t.is_coinbase=0 ' +
+      'GROUP BY l.address_id', [h0]);
+    return rows.map(r => ({ address: r.address, cluster: r.cluster_id == null ? null : Number(r.cluster_id),
+      sent: BigInt(r.sent), recv: BigInt(r.recv), txs: Number(r.n) }));
+  }
+
+  // largest transfers by value sent to others (change excluded)
+  async bigMoves(seconds, limit = 15) {
+    const h0 = await this.heightSince(seconds);
+    const rows = await this.q('SELECT t.id, t.txid, t.height, t.time, t.fee, ' +
+      'SUM(CASE WHEN l.sent=0 THEN l.received ELSE 0 END) moved, SUM(l.sent=0 AND l.received>0) receivers, ' +
+      '(SELECT a.address FROM ledger l2 JOIN addresses a ON a.id=l2.address_id WHERE l2.tx_id=t.id ORDER BY l2.sent DESC LIMIT 1) sender, ' +
+      '(SELECT a.address FROM ledger l3 JOIN addresses a ON a.id=l3.address_id WHERE l3.tx_id=t.id AND l3.sent=0 ' +
+      'ORDER BY l3.received DESC LIMIT 1) receiver ' +
+      'FROM txs t JOIN ledger l ON l.tx_id=t.id WHERE t.height >= ? AND t.is_coinbase=0 GROUP BY t.id ORDER BY moved DESC LIMIT ?',
+      [h0, limit]);
+    return rows.map(r => ({ txid: hex(r.txid), height: Number(r.height), time: Number(r.time), fee: BigInt(r.fee),
+      moved: BigInt(r.moved), receivers: Number(r.receivers), sender: r.sender, receiver: r.receiver }));
+  }
+
+  async clusterLabels() {
+    const rows = await this.q('SELECT id, label FROM clusters WHERE label IS NOT NULL');
+    return new Map(rows.map(r => [Number(r.id), r.label]));
+  }
+
+  // unspent value by how long it has not moved (age in blocks of the output)
+  async coinAge() {
+    const t = await this.tip();
+    const rows = await this.q('SELECT CASE WHEN ? - height < 60 THEN 0 WHEN ? - height < 1440 THEN 1 WHEN ? - height < 10080 THEN 2 ' +
+      'WHEN ? - height < 43200 THEN 3 ELSE 4 END band, SUM(amount) v, COUNT(*) n FROM outputs WHERE spent_height IS NULL GROUP BY band',
+      [t.height, t.height, t.height, t.height]);
+    return [0, 1, 2, 3, 4].map(b => { const r = rows.find(x => Number(x.band) === b); return { band: b, value: r ? BigInt(r.v) : 0n, count: r ? Number(r.n) : 0 }; });
+  }
+
   // Per model (slot = height mod K): blocks, the time spent on them and the attempts they took.
   // The interval of a block is its time minus its parent's, so it counts the time spent on that block's model.
   async modelStats(seconds = 86400, k = 2) {

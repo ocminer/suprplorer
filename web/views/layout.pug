@@ -78,7 +78,7 @@ html(lang='en')
                 span.brand-by by Suprnova
           if coin
             nav.nav(aria-label='Main')
-              each item in [['', 'Overview', 'overview'], ['/blocks', 'Blocks', 'blocks'], ['/mining', 'Mining', 'mining'], ['/pools', 'Pools', 'pools'], ['/calculator', 'Calculator', 'calculator'], ['/emission', 'Emission', 'emission'], ['/richlist', 'Rich list', 'richlist'], ['/network', 'Network', 'network']]
+              each item in [['', 'Overview', 'overview'], ['/blocks', 'Blocks', 'blocks'], ['/activity', 'Activity', 'activity'], ['/mining', 'Mining', 'mining'], ['/pools', 'Pools', 'pools'], ['/calculator', 'Calculator', 'calculator'], ['/emission', 'Emission', 'emission'], ['/richlist', 'Rich list', 'richlist'], ['/network', 'Network', 'network']]
                 a(href=coin.base + item[0] + (item[0] ? '' : '/'), aria-current=(page === item[2] || (item[2] === 'blocks' && (page === 'block' || page === 'miner-blocks')) ? 'page' : null))= item[1]
             form.topsearch(action=coin.base + '/search', method='get', role='search')
               +searchIcon
@@ -103,6 +103,7 @@ html(lang='en')
             if coin
               a(href=coin.base + '/') Overview
               a(href=coin.base + '/blocks') Blocks
+              a(href=coin.base + '/activity') Activity
               a(href=coin.base + '/mining') Mining
               a(href=coin.base + '/pools') Mining pools
               a(href=coin.base + '/calculator') Mining calculator

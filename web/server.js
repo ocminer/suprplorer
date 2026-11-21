@@ -10,6 +10,7 @@ const { createClient } = require('redis');
 const { loadCoins } = require('./lib/coins');
 const F = require('./lib/format');
 const CALC = require('./lib/calc');
+const FC = require('./lib/forecast');
 
 const PORT = Number(process.env.PORT || 3100);
 const COINS_DIR = process.env.SUPRPLORER_COINS_DIR || path.join(__dirname, 'coins');
@@ -303,11 +304,22 @@ function coinRouter(coin, redis) {
     const range = rangeOf(req);
     const secs = RANGES[range];
     const K = (coin.models || []).length;
-    const [tip, act, series, miners, blocks, models, mseries] = await Promise.all([D.tip(), D.activity(secs || 1e10), D.series(range),
-      D.miners(secs), D.blocks(15), K > 1 ? D.modelStats(secs || 1e10, K) : null, K > 1 ? D.modelSeries(range, K) : null]);
+    const [tip, act, series, miners, blocks, models, mseries, s7] = await Promise.all([D.tip(), D.activity(secs || 1e10), D.series(range),
+      D.miners(secs), D.blocks(15), K > 1 ? D.modelStats(secs || 1e10, K) : null, K > 1 ? D.modelSeries(range, K) : null, D.series('7d')]);
+    // trend of the last 48 hours projected 24 hours ahead (always from the 7-day series, whatever the range)
+    const sx = s7.points.map(p => p.t);
+    const recent = i => sx[i] >= sx[sx.length - 1] - 72 * 3600;
+    const keepX = sx.filter((_, i) => recent(i));
+    const fcH = FC.project(sx, s7.points.map(p => p.hashrate));
+    const fcD = FC.project(sx, s7.points.map(p => p.difficulty));
+    const forecast = fcH && fcD ? {
+      hashrate: fcH, difficulty: fcD,
+      hChart: FC.chart(keepX, s7.points.filter((_, i) => recent(i)).map(p => p.hashrate), fcH, coin.accent),
+      dChart: FC.chart(keepX, s7.points.filter((_, i) => recent(i)).map(p => p.difficulty), fcD, '#8e7cf8'),
+    } : null;
     render(res, 'mining', `${coin.name} Mining – hashrate, difficulty and top miners`, {
       desc: `${coin.name} mining statistics: estimated network hashrate per model, difficulty, block times, active miners and the miners that found the most blocks.`, range, tip, act, series, miners: minerGroups(miners),
-      minersTotal: miners.total, blocks, models, mseries });
+      minersTotal: miners.total, blocks, models, mseries, forecast });
   }));
 
   r.get('/pools', cached(), wrap(async (req, res) => {
@@ -384,6 +396,35 @@ function coinRouter(coin, redis) {
       desc: `How many ${coin.symbol} are issued per hour and per day, the supply against the reward schedule, the next halving and the live emission watch.`,
       range, tip, series, d1, d7, watch, allowed, rNow, perDay, nextHalving, cap, sched,
       expectedPerHour: Number(rNow) * 3600 / coin.blockTime / 10 ** dec });
+  }));
+
+  // transactions: activity over time, who sends and receives, the largest transfers, how long coins sit still
+  r.get('/activity', cached(), wrap(async (req, res) => {
+    const range = rangeOf(req);
+    const secs = RANGES[range];
+    const [tip, totals, totals24, series, flows, moves, age, clusters] = await Promise.all([D.tip(), D.activityTotals(secs),
+      D.activityTotals(86400), D.activitySeries(range), D.flows(secs), D.bigMoves(secs, 15), D.coinAge(), D.clusterLabels()]);
+    // one row per owner: a labelled entity, else an address cluster (common-input ownership), else the address
+    const owners = new Map();
+    for (const f of flows) {
+      const e = entity(f.address);
+      const key = e ? 'L:' + e.name : f.cluster != null ? 'C:' + f.cluster : 'A:' + f.address;
+      const o = owners.get(key) || { key, name: e ? e.name : (f.cluster != null && clusters.get(f.cluster)) || null,
+        color: e ? e.color : null, category: e ? e.category : null, address: f.address, addresses: 0, sent: 0n, recv: 0n, txs: 0, top: 0n };
+      o.addresses += 1; o.sent += f.sent; o.recv += f.recv; o.txs += f.txs;
+      if (f.sent + f.recv > o.top) { o.top = f.sent + f.recv; o.address = f.address; }
+      owners.set(key, o);
+    }
+    // plain numbers for the template (Pug cannot read BigInt literals)
+    const list = [...owners.values()].map(o => ({ ...o, net: Number(o.recv - o.sent) / 10 ** dec }));
+    const scale = rows => { const top = rows.length ? Math.abs(rows[0].net) : 1; return rows.map(o => ({ ...o, amount: Math.abs(o.net), pct: top ? 100 * Math.abs(o.net) / top : 0 })); };
+    const senders = scale(list.filter(o => o.net < 0).sort((a, b) => a.net - b.net).slice(0, 12));
+    const receivers = scale(list.filter(o => o.net > 0).sort((a, b) => b.net - a.net).slice(0, 12));
+    const ageTotal = age.reduce((t, a) => t + a.value, 0n);
+    const ageBands = age.map(a => ({ value: Number(a.value) / 10 ** dec, count: a.count, pct: ageTotal ? Number(a.value * 10000n / ageTotal) / 100 : 0 }));
+    render(res, 'activity', `${coin.name} Activity – transfers, top senders and big moves`, {
+      desc: `${coin.name} on-chain activity: transfers and value moved over time, active and new addresses, the largest senders and receivers, the biggest transfers and how long coins sit unspent.`,
+      range, tip, totals, totals24, series, senders, receivers, moves, ageBands, ageTotal: Number(ageTotal) / 10 ** dec });
   }));
 
   // mining calculator: expected coins per card and pool from benchmarks and the network per model (last 24h)
@@ -592,7 +633,7 @@ async function main() {
   }));
   app.get('/sitemap-pages.xml', (req, res) => res.type('application/xml').set('Cache-Control', 'public, max-age=3600').send(xml(
     '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">' + loc('/', null, 'daily', '0.8') +
-    coins.map(c => loc(c.base + '/', null, 'always', '1.0') + ['blocks', 'mining', 'pools', 'calculator', 'emission', 'richlist', 'network']
+    coins.map(c => loc(c.base + '/', null, 'always', '1.0') + ['blocks', 'activity', 'mining', 'pools', 'calculator', 'emission', 'richlist', 'network']
       .map(p => loc(`${c.base}/${p}`, null, 'hourly', '0.8')).join('')).join('') + '</urlset>')));
 
   app.get('/_health', async (req, res) => {

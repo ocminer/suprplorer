@@ -1,0 +1,114 @@
+extends layout
+block content
+  - var span = range === 'all' ? 'all time' : range
+  - var dec = coin.decimals
+  - var sym = coin.symbol
+  - var c = v => Number(v) / 10 ** dec
+  - var X = series.x
+  - var bl = series.bucket >= 7200 ? 'per ' + (series.bucket / 3600) + ' hours' : 'per hour'
+  - var sum = a => a.reduce((s, v) => s + v, 0)
+  .page-head
+    h1 Activity
+      span.sub Transfers between addresses, coinbase rewards left out. Value moved counts what reached other addresses, not change.
+    +range(range, coin.base + '/activity')
+  .stats
+    - var is24 = range === '24h'
+    +stat('Transfers, ' + span, F.num(totals.transfers), null, is24 ? 'Coinbase rewards not counted' : F.num(totals24.transfers) + ' in the last 24h')
+    +stat('Value moved, ' + span, F.compact(c(totals.moved), 2), sym, is24 ? 'Sent to other addresses, change not counted' : F.compact(c(totals24.moved), 2) + ' ' + sym + ' in the last 24h')
+    +stat('Fees paid, ' + span, F.num(c(totals.fees), 4), sym, totals.transfers ? 'Average ' + F.num(c(totals.fees) / totals.transfers, 6) + ' ' + sym + ' per transfer' : 'No transfers')
+    +stat('Active addresses, ' + span, F.num(totals.active), null, 'Sent or received, mining included')
+    +stat('New addresses, ' + span, F.num(totals.fresh), null, is24 ? 'First seen on chain' : F.num(totals24.fresh) + ' in the last 24h')
+    +stat('Pace', totals24.transfers ? F.num(totals24.transfers / 24, 1) : '0', 'per hour', 'Transfers per hour over the last 24h')
+
+  .grid-2.section
+    section.panel.chart-card
+      +chartHead('Transfers', F.num(sum(series.transfers)), null, 'Transactions ' + bl + ', ' + span)
+      .panel-body
+        +chart('a-tx', X, series.transfers, { format: 'int', bars: true, zero: true, color: '#5aa9ff' })
+      +chartFoot(series.transfers, v => F.num(v))
+    section.panel.chart-card
+      +chartHead('Value moved', F.compact(sum(series.moved), 2), sym, 'To other addresses, ' + bl)
+      .panel-body
+        +chart('a-moved', X, series.moved, { format: 'compact', unit: sym, zero: true, color: coin.accent })
+      +chartFoot(series.moved, v => F.compact(v, 2) + ' ' + sym)
+    section.panel.chart-card
+      +chartHead('Active and new addresses', null, null, 'Addresses that sent or received, and first seen, ' + bl)
+      .panel-body
+        +chart('a-addr', X, null, { format: 'int', zero: true, lines: [{ label: 'Active', color: '#f2b84b', y: series.active, fill: true }, { label: 'New', color: '#8e7cf8', y: series.fresh }] })
+      .legend
+        span
+          i.dot(style='--c:#f2b84b')
+          | Active
+          b= F.num(totals.active)
+        span
+          i.dot(style='--c:#8e7cf8')
+          | New
+          b= F.num(totals.fresh)
+    section.panel.chart-card
+      +chartHead('Fees', F.num(sum(series.fees), 4), sym, 'Paid by transfers, ' + bl)
+      .panel-body
+        +chart('a-fees', X, series.fees, { format: 'coins', unit: sym, zero: true, color: '#f07178' })
+      +chartFoot(series.fees, v => F.num(v, 4))
+
+  .grid-2.section
+    each side in [{ title: 'Top senders', rows: senders, note: 'Net sent to others' }, { title: 'Top receivers', rows: receivers, note: 'Net received from others' }]
+      section.panel
+        .panel-head
+          div
+            h2= side.title
+            .note #{side.note}, #{span}. Addresses of one wallet are grouped when they spent together.
+        if side.rows.length
+          ul.hbars.flow-bars
+            each o in side.rows
+              li(style=o.color ? '--c:' + o.color : null)
+                span.lbl
+                  if o.category
+                    a.tag(href=coin.base + '/address/' + o.address, style='--c:' + o.color)= o.name
+                  else
+                    a.mono(href=coin.base + '/address/' + o.address)= o.name || F.short(o.address, 10, 4)
+                  span.dim  #{o.addresses > 1 ? o.addresses + ' addr, ' : ''}#{F.num(o.txs)} tx
+                .track: i(style='width:' + Math.max(1, o.pct).toFixed(1) + '%')
+                span.v= F.compact(o.amount, 2)
+        else
+          .panel-body.dim No transfers in this range.
+
+  section.panel.section
+    .panel-head
+      div
+        h2 Largest transfers
+        .note By value sent to other addresses, #{span}
+    .table-scroll
+      table.t
+        thead
+          tr
+            th Transaction
+            th From
+            th To
+            th.num Moved
+            th.num.hide-sm Fee
+            th.num Block
+        tbody
+          each m in moves
+            tr
+              td: +hash(m.txid, coin.base + '/tx/' + m.txid, 8, 6)
+              td: +who(m.sender, { a: 8, b: 4 })
+              td
+                +who(m.receiver, { a: 8, b: 4 })
+                if m.receivers > 1
+                  span.dim(style='font-size:12.5px; margin-left:6px') +#{m.receivers - 1} more
+              td.num: b= F.num(c(m.moved), 2)
+              td.num.hide-sm.dim= F.num(c(m.fee), 6)
+              td.num
+                a(href=coin.base + '/block/' + m.height)= '#' + F.num(m.height)
+                .dim(style='font-size:12.5px'): +age(m.time)
+          if !moves.length
+            tr: td.empty(colspan=6) No transfers in this range.
+
+  - var bands = ['Moved in the last hour', '1 hour to 1 day', '1 to 7 days', '7 to 30 days', 'Over 30 days']
+  - var bandColors = ['#f07178', '#f2b84b', '#38d5c3', '#5aa9ff', '#8e7cf8']
+  section.panel.section
+    .panel-head
+      div
+        h2 How long coins sit still
+        .note Unspent #{sym} by the age of the output that holds it. Young coins are mostly fresh mining rewards and pool payouts.
+    +donut(ageBands.map((a, i) => ({ label: bands[i], value: a.pct, color: bandColors[i] })), F.compact(ageTotal, 2), sym + ' unspent')

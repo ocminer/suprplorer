@@ -209,6 +209,11 @@ a.tag:hover { color: white; border-color: var(--c); }
 .legend { display: flex; flex-wrap: wrap; gap: 8px 18px; padding: 14px 20px; border-top: 1px solid var(--line-soft); font-size: 13.5px; color: var(--muted); }
 .legend span { display: inline-flex; align-items: center; gap: 7px; }
 .legend b { color: var(--text); font-weight: 600; }
+.legend b.up { color: var(--good); }
+.legend b.down { color: var(--bad); }
+.nav a { white-space: nowrap; }
+.flow-bars li { grid-template-columns: minmax(0, 250px) minmax(0, 1fr) 70px; }
+.flow-bars .lbl { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* stacked share bar */
 .stack { display: flex; height: 12px; border-radius: 6px; overflow: hidden; background: var(--line-soft); gap: 2px; }
@@ -400,6 +405,10 @@ td:has(> .ext) { white-space: nowrap; }
 .calc-t { min-width: 760px; }
 .matrix-t { min-width: 820px; }
 .calc-t td:first-child, .matrix-t td:first-child { min-width: 170px; }
+@media (max-width: 1360px) {
+  .topsearch { width: 210px; }
+  .nav a { padding: 0 9px; }
+}
 @media (max-width: 1100px) {
   .topsearch { width: 220px; }
   .nav a { padding: 0 9px; }

@@ -84,6 +84,15 @@ models of `blocks per day x card rate / network rate`, times the miner reward (r
 share, plus average fees), less the pool fee and the fee of the pool's miner. Price fields stay empty
 until a price is published in Redis as `<coin>:price` (`{"usd": …, "sources": […]}`).
 
+## Activity and forecasts
+
+`/<coin>/activity` shows transfers (coinbase excluded), value moved to other addresses (change excluded:
+ledger rows of a transaction that received without spending), fees, active and new addresses, top net
+senders and receivers grouped by labelled entity or address cluster, the largest transfers, and unspent
+value by output age. The Mining page adds a trend projection for hashrate and difficulty: a straight
+line through the last 24 hours, extended 24 hours, with a band of 1.64 residual standard deviations
+(`web/lib/forecast.js`).
+
 ## Configuration
 
 Everything comes from environment variables; nothing is configured in the repository.
