@@ -223,11 +223,20 @@
       var keep = 1 - (pool.fee + pool.minerFee) / 100;
       var power = get('power') || 0, price = get('price'), count = Math.max(1, Math.round(get('count') || 1));
       var days = D.cards.map(function (c) { return c.blocksPerDay * D.minerReward * keep * count; });
+      // average over the chosen period if each model's network keeps its linear trend (never above today)
+      var tdays = +form.elements.trend.value || 7;
+      var factor = D.net.map(function (n) { var x = Math.max(0, n.growth || 0) * tdays; return x > 1e-9 ? Math.log1p(x) / x : 1; });
+      var trends = D.cards.map(function (c) {
+        return (c.parts || []).reduce(function (s, b, k) { return s + b * factor[k]; }, 0) * D.minerReward * keep * count;
+      });
       var max = Math.max.apply(null, days.concat([1e-12]));
       D.cards.forEach(function (c, i) {
         var day = days[i], kwh = c.power * 24 / 1000 * count, cost = kwh * power;
         document.querySelectorAll('[data-i="' + i + '"]').forEach(function (row) {
           setF(row, 'day', coinsFmt(day));
+          setF(row, 'trend', coinsFmt(trends[i]));
+          var tb = row.querySelector('[data-f="tbar"]');
+          if (tb) tb.style.width = (100 * trends[i] / max).toFixed(1) + '%';
           setF(row, 'kwh', coinsFmt(kwh ? day / kwh : 0));
           setF(row, 'cost', usd(cost));
           setF(row, 'be', day > 0 ? sig(cost / day) : '–');
@@ -246,7 +255,9 @@
       if (ph) ph.hidden = price == null;
       var note = document.querySelector('.calc-pool-note');
       if (note) note.textContent = 'On ' + pool.name + ', after ' + (pool.fee + pool.minerFee) + '% fees, ' +
-        (count > 1 ? count + ' cards, ' : '') + 'last 24h network';
+        (count > 1 ? count + ' cards, ' : '') + 'network of the last 3 hours';
+      var tl = document.querySelector('.calc-trend-label');
+      if (tl) tl.textContent = 'Average of the next ' + (tdays === 1 ? '24 hours' : tdays + ' days') + ' on the network trend';
     };
     form.addEventListener('input', update);
     form.addEventListener('change', update);

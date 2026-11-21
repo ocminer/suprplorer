@@ -466,8 +466,13 @@ function coinRouter(coin, redis) {
     // the network of the last 3 hours (as the headline hashrate elsewhere): the hashrate climbs fast, a day
     // average would overstate what a card finds today; fees per block over a day (they are sparse)
     const WIN = 3 * 3600;
-    const [tip, stats, d1] = await Promise.all([D.tip(), D.modelStats(WIN, K), D.issuance(86400)]);
+    const [tip, stats, d1, s7] = await Promise.all([D.tip(), D.modelStats(WIN, K), D.issuance(86400), D.modelSeries('7d', K)]);
     const net = CALC.network(models, stats, WIN);
+    // growth of each model's hashrate: straight line through the last 24 hours, per day relative to now
+    net.forEach((n, k) => {
+      const p = FC.project(s7.x, s7.slots[k].hashrate.map(v => v || 0), { windowSecs: 86400 });
+      n.growth = p ? p.perDay : 0;
+    });
     const reward = Number(rewardAt(tip.height)) / 10 ** dec;
     const project = Math.floor(Number(rewardAt(tip.height)) * 5 / 100) / 10 ** dec;
     const feesPerBlock = d1.blocks ? Number(d1.fees) / 10 ** dec / d1.blocks : 0;
@@ -484,6 +489,7 @@ function coinRouter(coin, redis) {
     const cards = CALC.loadBenchmarks(coin.id, models.map(m => m.id)).map(b => {
       const bpd = CALC.blocksPerDay(b.rates, net);
       return { gpu: b.gpu, vendor: b.vendor, miner: b.miner, version: b.version, power: b.power_w, rates: b.rates, date: b.date,
+        parts: CALC.parts(b.rates, net),
         source: b.source, note: b.note || null, auto: b.auto, upcoming: !!b.upcoming, blocksPerDay: bpd, grossPerDay: bpd * minerReward };
     }).sort((a, b) => b.grossPerDay - a.grossPerDay);
     const vk = v => String(v).split('.').map(Number);
@@ -523,29 +529,44 @@ function coinRouter(coin, redis) {
 
   r.get('/calculator', cached(), wrap(async (req, res) => {
     if (!(coin.models || []).length) return fail(res, 404, 'Not available', 'This coin has no mining calculator yet.');
-    const [mm, mtrend] = await Promise.all([miningModel(), D.modelSeries('30d', (coin.models || []).length)]);
+    const [mm, mtrend] = await Promise.all([miningModel(), D.modelSeries('7d', (coin.models || []).length)]);
     const { models, tip, net, reward, project, feesPerBlock, minerReward, pools, cards, minerRelease } = mm;
     const priceRaw = res.locals.price ? JSON.stringify(res.locals.price) : null;
-    // 30 days of yield for the strongest cards: coins per day per bucket at the network of that bucket
+    // yield of the strongest cards over the last 24 hours, the window the trend is fitted on (2-hour windows,
+    // each at the network of its window),
+    // then today's estimate and the next TREND_DAYS on the network trend (one point every 6 hours)
     const trendCards = cards.filter((c, i, a) => a.findIndex(x => x.gpu === c.gpu) === i).slice(0, 4);
     const tcolors = ['#38d5c3', '#f2b84b', '#8e7cf8', '#5aa9ff'];
-    const trend = { x: mtrend.x, lines: trendCards.map((c, ci) => ({ label: c.gpu, color: tcolors[ci], y: mtrend.x.map((_, i) => {
+    const TREND_DAYS = 7;
+    // full windows of the last 24 hours only (the newest window is still filling)
+    const hist = mtrend.x.map((x, i) => i).filter(i => mtrend.x[i] >= tip.time - 86400 && mtrend.x[i] + mtrend.bucket <= tip.time);
+    const ahead = [];
+    for (let t = 6 * 3600; t <= TREND_DAYS * 86400; t += 6 * 3600) ahead.push(t);
+    const at = (c, t) => c.parts.reduce((s, b, k) => s + b / (1 + Math.max(0, net[k].growth) * t / 86400), 0) * minerReward;
+    const measured = (c, i) => {
       let sum = 0, ok = false;
       models.forEach((m, k) => {
         const h = mtrend.slots[k].hashrate[i], n = mtrend.slots[k].blocks[i];
-        // the newest window is still filling: count its blocks over the time it has actually covered
-        const width = Math.max(600, Math.min(mtrend.bucket, tip.time - mtrend.x[i]));
-        if (h > 0 && n) { sum += (n * 86400 / width) * c.rates[m.id] / h; ok = true; }
+        if (h > 0 && n) { sum += (n * 86400 / mtrend.bucket) * c.rates[m.id] / h; ok = true; }
       });
       return ok ? sum * minerReward : null;
-    }) })) };
+    };
+    const trend = { x: hist.map(i => mtrend.x[i] + mtrend.bucket / 2).concat([tip.time], ahead.map(t => tip.time + t)), lines: [] };
+    trendCards.forEach((c, ci) => {
+      trend.lines.push({ label: c.gpu, color: tcolors[ci], now: c.grossPerDay, end: at(c, TREND_DAYS * 86400),
+        y: hist.map(i => measured(c, i)).concat([c.grossPerDay], ahead.map(() => null)) });
+    });
+    trendCards.forEach((c, ci) => {
+      trend.lines.push({ label: c.gpu + ', on trend', color: tcolors[ci], dash: [4, 5],
+        y: hist.map(() => null).concat([c.grossPerDay], ahead.map(t => at(c, t))) });
+    });
     const price = priceRaw ? JSON.parse(priceRaw) : null;
     render(res, 'calculator', `${coin.name} Mining Calculator – coins per GPU, pool fees and power cost`, {
       desc: `${coin.name} mining calculator: expected ${coin.symbol} per day for every benchmarked GPU on each pool, after fees, with power cost and break-even price, from the live network hashrate of each model.`,
-      tip, net, cards, pools, minerReward, reward, project, feesPerBlock, trend, price, defaultPower: 0.30, minerRelease,
-      calcData: { models: models.map(m => ({ id: m.id, name: m.name })), net: net.map(n => ({ id: n.id, hashrate: n.hashrate, blocksPerDay: n.blocksPerDay })),
+      tip, net, cards, pools, minerReward, reward, project, feesPerBlock, trend, price, defaultPower: 0.30, minerRelease, trendDays: TREND_DAYS,
+      calcData: { models: models.map(m => ({ id: m.id, name: m.name })), net: net.map(n => ({ id: n.id, hashrate: n.hashrate, blocksPerDay: n.blocksPerDay, growth: n.growth })),
         minerReward, pools: pools.map(p => ({ name: p.name, fee: p.fee, minerFee: p.minerFee })), price: price && price.usd ? price.usd : null,
-        cards: cards.map(c => ({ gpu: c.gpu, power: c.power, blocksPerDay: c.blocksPerDay })) } });
+        cards: cards.map(c => ({ gpu: c.gpu, power: c.power, blocksPerDay: c.blocksPerDay, parts: c.parts })) } });
   }));
 
   r.get('/richlist', cached(), wrap(async (req, res) => {

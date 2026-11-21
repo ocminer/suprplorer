@@ -63,4 +63,17 @@ function blocksPerDay(rates, net) {
   return net.reduce((sum, n) => sum + (n.hashrate > 0 ? n.blocksPerDay * (rates[n.id] || 0) / n.hashrate : 0), 0);
 }
 
-module.exports = { family, loadBenchmarks, network, blocksPerDay };
+// per model, the card's expected blocks a day (the parts blocksPerDay sums)
+function parts(rates, net) {
+  return net.map(n => (n.hashrate > 0 ? n.blocksPerDay * (rates[n.id] || 0) / n.hashrate : 0));
+}
+
+// network trend: the hashrate of a model grows linearly by `growth` (fraction of today's per day); the yield
+// of a card falls as 1 / (1 + growth * t). Average over the next `days`: ln(1 + g d) / (g d). A shrinking
+// network is not assumed (factor 1), so the trend figure never shows more than today's estimate.
+function trendFactor(growth, days) {
+  const x = Math.max(0, growth || 0) * days;
+  return x > 1e-9 ? Math.log1p(x) / x : 1;
+}
+
+module.exports = { family, loadBenchmarks, parts, trendFactor, network, blocksPerDay };
