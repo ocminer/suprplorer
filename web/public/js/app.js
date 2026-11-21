@@ -57,6 +57,7 @@
     var fmt = FMT[cfg.format] || FMT.compact;
     var span = cfg.x[cfg.x.length - 1] - cfg.x[0];
     var stacked = !!cfg.stack;
+    var multi = !stacked && !!cfg.lines;
     var tip = document.createElement('div');
     tip.className = 'chart-tip';
     tip.hidden = true;
@@ -74,6 +75,13 @@
         series.push({ stroke: cfg.stack[k].color, fill: cfg.stack[k].color, width: 0,
           paths: uPlot.paths.bars({ size: [0.78, 40], gap: 2, radius: 0.15 }), points: { show: false } });
       }
+    } else if (multi) {
+      cfg.lines.forEach(function (l) {
+        data.push(l.y);
+        series.push({ stroke: l.color, width: 2, spanGaps: true, points: { show: false },
+          paths: cfg.step ? uPlot.paths.stepped({ align: 1 }) : uPlot.paths.spline(),
+          dash: l.dash || undefined, fill: l.fill ? hexA(l.color, 0.08) : undefined });
+      });
     } else {
       data.push(cfg.y);
       series.push(cfg.bars
@@ -92,7 +100,7 @@
       width: host.clientWidth, height: host.clientHeight,
       padding: [14, 16, 0, 0],
       legend: { show: false },
-      cursor: { points: { size: 9, width: 2, fill: C('--bg'), stroke: stacked ? 'transparent' : color },
+      cursor: { points: { size: 9, width: 2, fill: C('--bg'), stroke: function (u, k) { return stacked ? 'transparent' : (u.series[k].stroke && typeof u.series[k].stroke === 'function' ? u.series[k].stroke(u, k) : u.series[k].stroke) || color; } },
                 x: true, y: false, drag: { x: false, y: false } },
       scales: { x: { time: false }, y: { range: function (u, min, max) {
         if (cfg.zero || stacked || cfg.bars) return [0, (max || 1) * 1.15];
@@ -108,7 +116,7 @@
       series: series,
       hooks: {
         draw: [function (u) { // glowing marker on the latest value of a line chart
-          if (stacked || cfg.bars) return;
+          if (stacked || cfg.bars || multi) return;
           var i = u.data[1].length - 1, v = u.data[1][i];
           if (v == null) return;
           var x = u.valToPos(u.data[0][i], 'x', true), y = u.valToPos(v, 'y', true), c = u.ctx, r = devicePixelRatio;
@@ -122,7 +130,12 @@
           if (i == null || u.cursor.left < 0) { tip.hidden = true; return; }
           var when = new Date(u.data[0][i] * 1000).toISOString().slice(0, 16).replace('T', ' ') + ' UTC';
           var html;
-          if (stacked) {
+          if (multi) {
+            html = cfg.lines.map(function (l, k) {
+              var v = u.data[k + 1][i];
+              return v == null ? '' : '<div><i class="dot" style="--c:' + l.color + '"></i> ' + l.label + ' <b>' + fmt(v) + '</b>' + (l.unit || cfg.unit ? ' ' + (l.unit || cfg.unit) : '') + '</div>';
+            }).join('') + '<div class="when">' + when + '</div>';
+          } else if (stacked) {
             html = cfg.stack.map(function (s) {
               return s.y[i] ? '<div><i class="dot" style="--c:' + s.color + '"></i> ' + s.label + ' <b>' + s.y[i] + '</b></div>' : '';
             }).join('') + '<div class="when">' + when + '</div>';
@@ -133,7 +146,7 @@
           tip.hidden = false;
           var left = u.cursor.left, w = u.over.clientWidth;
           tip.style.left = Math.min(Math.max(left, 70), w - 70) + 'px';
-          tip.style.top = (stacked || cfg.bars ? 10 : Math.max(10, u.valToPos(u.data[1][i], 'y'))) + 'px';
+          tip.style.top = (stacked || cfg.bars || multi ? 10 : Math.max(10, u.valToPos(u.data[1][i], 'y'))) + 'px';
         }]
       }
     };

@@ -31,6 +31,19 @@ def reward(height: int) -> int:
     return INITIAL_REWARD >> (height // HALVING) if height // HALVING < 64 else 0
 
 
+def cumulative_reward(height: int) -> int:
+    """Sum of reward(h) for h = 0 .. height (the coins the schedule allows up to that height)."""
+    total, h = 0, 0
+    while h <= height:
+        era = h // HALVING
+        if era >= 64:
+            break
+        end = min(height, (era + 1) * HALVING - 1)
+        total += (end - h + 1) * (INITIAL_REWARD >> era)
+        h = end + 1
+    return total
+
+
 def project_share(height: int) -> int:
     return reward(height) * 5 // 100
 

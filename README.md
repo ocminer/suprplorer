@@ -59,6 +59,19 @@ Labels are stored in the `labels` table of each coin database (never touched by 
 `source` = `repo` (from the file; sync adds, updates and removes them) or `local` (added by hand;
 only `rm` removes them). A cluster takes the label of any labelled member (common-input-ownership).
 
+## Emission watch
+
+`indexer/emission_watch.py` runs every minute. It checks every coinbase against reward plus fees, the
+supply against the reward schedule (carry-over included), issuance over the last 1 and 6 hours, and
+the share of the largest miner, publishes the result for the Emission page and sends an alert when a
+check turns bad or recovers.
+
+## Mining benchmarks
+
+[`benchmarks/<coin>.json`](benchmarks/neb.json) holds per-card rates for the mining calculator, per
+model of the coin (see [CONTRIBUTING.md](CONTRIBUTING.md)). `tools/benchmarks.py suprminer neb`
+imports the newest rates from the suprminer README; run it daily to pick up new releases.
+
 ## Configuration
 
 Everything comes from environment variables; nothing is configured in the repository.
@@ -70,6 +83,8 @@ Everything comes from environment variables; nothing is configured in the reposi
 | `NEB_RPC`, `NEB_DB`, `REDIS_PREFIX` | indexer | node RPC, coin database, Redis key prefix |
 | `PORT`, `CANONICAL_ORIGIN` | web | listen port, origin used in canonical URLs and sitemaps |
 | `GA4_ID`, `GOOGLE_SITE_VERIFICATION` | web | optional Google Analytics / Search Console |
+| `NTFY_URL` | emission watch | optional ntfy topic URL for alerts |
+| `EMISSION_1H_MAX`, `EMISSION_6H_MAX`, `POOL_MAX_SHARE`, `POOL_WINDOW` | emission watch | alert thresholds (defaults 1.5, 1.25, 0.51, 360 blocks) |
 
 Run the node, the indexer (`python indexer/indexer.py`) and the web app (`cd web && npm ci && node
 server.js`) behind a reverse proxy that terminates TLS.

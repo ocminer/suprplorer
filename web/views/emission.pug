@@ -1,0 +1,88 @@
+extends layout
+block content
+  - var span = range === 'all' ? 'all time' : range
+  - var dec = coin.decimals
+  - var sym = coin.symbol
+  - var X = series.points.map(p => p.t)
+  - var pct = (a, b) => b > 0n ? Number(a * 10000n / b) / 100 : 0
+  - var r24 = pct(d1.issued, sched24)
+  - var r7 = pct(d7.issued, sched7)
+  - var supplyPct = pct(tip.supply, cap)
+  - var project = rNow * 5n / 100n
+  - var NAMES = { overpay: 'Coinbase within reward and fees', supply: 'Supply within the schedule', rate_1h: 'Issuance, last hour', rate_6h: 'Issuance, last 6 hours', dominance: 'Largest miner' }
+  .page-head
+    h1 Emission
+      span.sub Coins issued against the #{coin.name} reward schedule, checked every minute.
+    +range(range, coin.base + '/emission')
+
+  section.panel.watch(class=watch && Object.values(watch.checks).some(c => !c.ok) ? 'alarm' : null)
+    .panel-head
+      div
+        h2 Emission watch
+        if watch
+          .note
+            | Last check at block #{F.num(watch.tip)},
+            |
+            span(data-ts=watch.checked)= F.ago(watch.checked)
+        else
+          .note Waiting for the first check.
+      if watch
+        - var nBad = Object.values(watch.checks).filter(c => !c.ok).length
+        span.watch-state(class=nBad ? 'bad' : 'good')= nBad ? nBad + (nBad === 1 ? ' check needs attention' : ' checks need attention') : 'All checks normal'
+    if watch
+      ul.checks
+        each c, k in watch.checks
+          li(class=c.ok ? 'ok' : 'bad')
+            i.state(aria-hidden='true')
+            div
+              b= NAMES[k] || k
+              span= c.text
+            span.since(title='State unchanged since')
+              span(data-ts=c.since)= F.ago(c.since)
+
+  .stats.section
+    +stat('Supply', F.compact(F.coins(tip.supply, dec), 2), sym, supplyPct.toFixed(2) + '% of ' + F.compact(F.coins(cap, dec), 2) + ' ' + sym + ' max')
+      .meter: i(style='width:' + Math.min(100, supplyPct) + '%')
+    +stat('Issued, 24h', F.num(Number(d1.issued) / 10 ** dec, 0), sym, r24.toFixed(1) + '% of the schedule (' + F.num(Number(sched24) / 10 ** dec, 0) + ' ' + sym + ')')
+    +stat(age < 7 * 86400 ? 'Issued since launch' : 'Issued, 7 days', F.compact(Number(d7.issued) / 10 ** dec, 2), sym, r7.toFixed(1) + '% of the schedule, ' + F.num(d7.blocks) + ' blocks')
+    +stat('Block reward', F.num(Number(rNow) / 10 ** dec, 2), sym, F.num(Number(rNow - project) / 10 ** dec, 2) + ' to the miner, ' + F.num(Number(project) / 10 ** dec, 2) + ' project share')
+    if nextHalving
+      - var left = nextHalving - tip.height
+      +stat('Next halving', '#' + F.num(nextHalving), null, F.num(left) + ' blocks, about ' + F.num(Math.round(left * coin.blockTime / 86400)) + ' days at ' + coin.blockTime + 's blocks')
+    +stat('Schedule allows', F.compact(F.coins(allowed, dec), 2), sym, tip.supply <= allowed ? (allowed === tip.supply ? 'Supply matches it exactly' : F.num(Number(allowed - tip.supply) / 10 ** dec, 2) + ' ' + sym + ' below it (destroyed)') : 'Supply is ABOVE the schedule')
+
+  - var bucketLabel = series.bucket >= 7200 ? 'per ' + (series.bucket / 3600) + ' hours' : 'per hour'
+  .grid-2.section
+    section.panel.chart-card
+      +chartHead('Issued per hour', F.num(series.points.length ? series.points[series.points.length - 1].perHour / 10 ** dec : 0, 0), sym, 'Coins issued per hour, averaged ' + bucketLabel + '; dashed: the schedule')
+      .panel-body
+        +chart('e-rate', X, null, { format: 'coins', zero: true, unit: sym + '/h', lines: [{ label: 'Issued', color: coin.accent, y: series.points.map(p => p.perHour / 10 ** dec), fill: true }, { label: 'Schedule', color: '#5e6784', dash: [5, 5], y: X.map(() => expectedPerHour) }] })
+      .legend
+        span
+          i.dot(style='--c:' + coin.accent)
+          | Issued
+        span
+          i.dot(style='--c:#5e6784')
+          | Schedule
+          b= F.num(expectedPerHour, 0) + ' ' + sym + '/h'
+    section.panel.chart-card
+      +chartHead('Supply vs schedule', F.compact(F.coins(tip.supply, dec), 2), sym, 'Supply at the end of each bucket; dashed: the supply if every block had taken ' + coin.blockTime + 's')
+      .panel-body
+        +chart('e-supply', X, null, { format: 'compact', unit: sym, lines: [{ label: 'Supply', color: '#8e7cf8', y: series.points.map(p => Number(p.supply) / 10 ** dec) }, { label: 'Schedule by time', color: '#5e6784', dash: [5, 5], y: sched }] })
+      .legend
+        - var last = series.points.length ? Number(series.points[series.points.length - 1].supply) / 10 ** dec : 0
+        - var ahead = sched.length ? last - sched[sched.length - 1] : 0
+        span
+          i.dot(style='--c:#8e7cf8')
+          | Supply
+        span
+          i.dot(style='--c:#5e6784')
+          | Schedule by time
+        span #{ahead >= 0 ? 'Ahead of it by' : 'Behind it by'}
+          b= F.num(Math.abs(ahead), 0) + ' ' + sym
+  section.panel.section
+    .panel-head
+      h2 How #{sym} is issued
+    .panel-body.prose
+      p Every block pays a fixed reward, #{F.num(Number(rNow) / 10 ** dec, 2)} #{sym} today, plus the fees of its transactions. Five percent of the reward goes to the project's multisig; the rest goes to the miner. The reward halves every #{F.num(coin.halving)} blocks, so issuance follows the number of blocks, not the clock: when hashrate rises faster than the difficulty adjusts, blocks come quicker and more coins are issued per hour until the difficulty catches up.
+      p The watch above compares every block and the last hour and six hours with that schedule, and alerts the explorer operators at once when a coinbase pays more than it may, the supply leaves the schedule, issuance runs far ahead of it, or a single miner finds more than half of the recent blocks.

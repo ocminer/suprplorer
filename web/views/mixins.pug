@@ -51,7 +51,7 @@ mixin copy(text)
 mixin chart(id, x, y, o)
   - o = o || {}
   .chart(id=id, class=o.tall ? 'tall' : null)
-  script(type='application/json', data-chart='')!= JSON.stringify({ target: id, x: x, y: y, stack: o.stack, step: !!o.step, format: o.format, unit: o.unit, bars: !!o.bars, zero: !!o.zero, color: o.color }).replace(/</g, '\\u003c')
+  script(type='application/json', data-chart='')!= JSON.stringify({ target: id, x: x, y: y, lines: o.lines, stack: o.stack, step: !!o.step, format: o.format, unit: o.unit, bars: !!o.bars, zero: !!o.zero, color: o.color }).replace(/</g, '\\u003c')
 
 //- chart panel header: title on the left, the latest value large on the right
 mixin chartHead(title, value, unit, note)

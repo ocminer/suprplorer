@@ -13,5 +13,24 @@
   "blockTime": 60,
   "maxSupply": "18000000",
   "tagline": "Proof of work that trains neural networks on Kepler and TESS exoplanet signals.",
-  "links": { "on GitHub": "https://github.com/SilasEigen/neb" }
+  "links": {
+    "on GitHub": "https://github.com/SilasEigen/neb"
+  },
+  "models": [
+    {
+      "id": "kepler",
+      "name": "Kepler",
+      "color": "#38d5c3",
+      "about": "Kepler transit signals (planet candidate or false positive), even heights"
+    },
+    {
+      "id": "tess",
+      "name": "TESS",
+      "color": "#f2b84b",
+      "about": "TESS signals (eclipse or junk), odd heights"
+    }
+  ],
+  "genesisReward": "2000000000",
+  "halving": 450000,
+  "initialReward": "2000000000"
 }

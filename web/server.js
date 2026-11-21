@@ -283,11 +283,12 @@ function coinRouter(coin, redis) {
   r.get('/mining', cached(), wrap(async (req, res) => {
     const range = rangeOf(req);
     const secs = RANGES[range];
-    const [tip, act, series, miners, blocks] = await Promise.all([D.tip(), D.activity(secs || 1e10), D.series(range),
-      D.miners(secs), D.blocks(15)]);
+    const K = (coin.models || []).length;
+    const [tip, act, series, miners, blocks, models, mseries] = await Promise.all([D.tip(), D.activity(secs || 1e10), D.series(range),
+      D.miners(secs), D.blocks(15), K > 1 ? D.modelStats(secs || 1e10, K) : null, K > 1 ? D.modelSeries(range, K) : null]);
     render(res, 'mining', `${coin.name} Mining – hashrate, difficulty and top miners`, {
-      desc: `${coin.name} mining statistics: estimated network hashrate, difficulty, block times, active miners and the miners that found the most blocks.`, range, tip, act, series, miners: minerGroups(miners),
-      minersTotal: miners.total, blocks });
+      desc: `${coin.name} mining statistics: estimated network hashrate per model, difficulty, block times, active miners and the miners that found the most blocks.`, range, tip, act, series, miners: minerGroups(miners),
+      minersTotal: miners.total, blocks, models, mseries });
   }));
 
   r.get('/pools', cached(), wrap(async (req, res) => {
@@ -303,6 +304,44 @@ function coinRouter(coin, redis) {
       donut: donut(groups, 7), stack: await poolStack(range, pools),
       othersCount: others.length, total: miners.total, poolBlocks: pools.reduce((s, p) => s + p.blocks, 0),
       poolEarned: pools.reduce((s, p) => s + p.earned, 0n) });
+  }));
+
+  // reward schedule of the coin: reward at a height and the sum up to a height (base units, BigInt)
+  const rewardAt = h => { const e = Math.floor(h / (coin.halving || Infinity)); return e >= 64 ? 0n : BigInt(coin.initialReward || 0) >> BigInt(e); };
+  const scheduledUpTo = h => {
+    let total = 0n, x = 0;
+    const H = coin.halving || Infinity;
+    while (x <= h) { const e = Math.floor(x / H); if (e >= 64) break; const end = Math.min(h, (e + 1) * H - 1);
+      total += BigInt(end - x + 1) * rewardAt(x); x = end + 1; }
+    return total;
+  };
+
+  r.get('/emission', cached(), wrap(async (req, res) => {
+    const range = rangeOf(req);
+    const [tip, g, series, d1, d7, watchRaw] = await Promise.all([D.tip(), D.genesis(), D.emissionSeries(range),
+      D.issuance(86400), D.issuance(7 * 86400), redis.get(`${coin.prefix}:watch`).catch(() => null)]);
+    const watch = watchRaw ? JSON.parse(watchRaw) : null;
+    const allowed = g.carryover + scheduledUpTo(tip.height);
+    const rNow = rewardAt(tip.height);
+    const perDay = rNow * BigInt(Math.round(86400 / coin.blockTime));
+    const nextHalving = coin.halving ? (Math.floor(tip.height / coin.halving) + 1) * coin.halving : null;
+    const cap = BigInt(coin.maxSupply || 0) * 10n ** BigInt(dec) + g.carryover;
+    // the schedule by time: where the supply would be if every block since genesis took exactly the target time
+    const sched = series.points.map(p => {
+      const h = Math.max(0, Math.floor((p.t + series.bucket - g.time) / coin.blockTime));
+      return Number(g.carryover + scheduledUpTo(h)) / 10 ** dec;
+    });
+    // a young chain has not existed for the whole window: compare with the schedule of the time it has existed
+    const age = Math.max(1, tip.time - g.time);
+    const sched24 = rNow * BigInt(Math.round(Math.min(86400, age) / coin.blockTime));
+    const sched7 = rNow * BigInt(Math.round(Math.min(7 * 86400, age) / coin.blockTime));
+    // drop a first bucket that starts before the window: it is only partly inside and would read low
+    const since = tip.time - (RANGES[range] || age);
+    if (series.points.length > 2 && series.points[0].t < since && range !== 'all') { series.points.shift(); sched.shift(); }
+    render(res, 'emission', `${coin.name} Emission – coins issued vs the reward schedule`, { sched24, sched7, age,
+      desc: `How many ${coin.symbol} are issued per hour and per day, the supply against the reward schedule, the next halving and the live emission watch.`,
+      range, tip, series, d1, d7, watch, allowed, rNow, perDay, nextHalving, cap, sched,
+      expectedPerHour: Number(rNow) * 3600 / coin.blockTime / 10 ** dec });
   }));
 
   r.get('/richlist', cached(), wrap(async (req, res) => {
@@ -460,7 +499,7 @@ async function main() {
   }));
   app.get('/sitemap-pages.xml', (req, res) => res.type('application/xml').set('Cache-Control', 'public, max-age=3600').send(xml(
     '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">' + loc('/', null, 'daily', '0.8') +
-    coins.map(c => loc(c.base + '/', null, 'always', '1.0') + ['blocks', 'mining', 'pools', 'richlist', 'network']
+    coins.map(c => loc(c.base + '/', null, 'always', '1.0') + ['blocks', 'mining', 'pools', 'emission', 'richlist', 'network']
       .map(p => loc(`${c.base}/${p}`, null, 'hourly', '0.8')).join('')).join('') + '</urlset>')));
 
   app.get('/_health', async (req, res) => {

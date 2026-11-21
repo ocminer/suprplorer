@@ -6,7 +6,7 @@ on:
 permissions:
   contents: read
 jobs:
-  labels:
+  data:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -18,6 +18,8 @@ jobs:
         run: |
           cd indexer
           for f in ../labels/*.json; do python label.py "$(basename "$f" .json)" check "$f"; done
+      - name: Validate benchmarks files
+        run: for f in benchmarks/*.json; do python tools/benchmarks.py check "$f"; done
   secrets:
     runs-on: ubuntu-latest
     steps:

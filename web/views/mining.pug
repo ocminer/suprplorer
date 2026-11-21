@@ -15,6 +15,57 @@ block content
     +stat('Block time', act.blockTime ? F.duration(act.blockTime) : '–', null, 'Target ' + coin.blockTime + 's')
     +stat('Active miners', F.num(act.miners), null, 'Payout addresses that found a block')
     +stat('Paid to miners', F.compact(F.coins(earned, coin.decimals), 2), coin.symbol, 'Rewards and fees, project share excluded')
+  if models && coin.models
+    section.section
+      .section-head
+        h2 Hashrate per model
+        p.lede #{coin.name} blocks alternate between #{coin.models.length} neural-network models by height, and a card runs at a different speed on each. The network hashrate below is shown separately for each model; the overall figure above is the time-weighted mix.
+      .model-grid
+        each m, i in coin.models
+          - var ms = models[i]
+          - var mh = F.hashrate(ms.hashrate)
+          section.panel.model-card(style='--c:' + m.color)
+            .model-top
+              span.model-name
+                i.dot(style='--c:' + m.color)
+                = m.name
+              span.dim= m.about
+            .model-stats
+              div
+                .stat-label Hashrate
+                .model-value #{mh.value}
+                  span.unit= mh.unit
+              div
+                .stat-label Block time
+                .model-value= ms.blockTime ? F.duration(ms.blockTime) : '–'
+              div
+                .stat-label Share of time
+                .model-value= (ms.timeShare * 100).toFixed(0) + '%'
+            .meter(title='Share of the time the chain spent on ' + m.name + ' blocks'): i(style='width:' + (ms.timeShare * 100).toFixed(1) + '%')
+            .stat-sub #{F.num(ms.blocks)} blocks, average difficulty #{F.num(ms.difficulty, 1)}, #{span}
+      - var mx = mseries.x
+      - var mbucket = mseries.bucket >= 3600 ? 'per ' + (mseries.bucket / 3600) + ' hours' : 'per ' + (mseries.bucket / 60) + ' minutes'
+      .grid-2
+        section.panel.chart-card
+          +chartHead('Hashrate per model', null, null, 'Attempts per second on each model, ' + mbucket)
+          .panel-body
+            +chart('m-model-hash', mx, null, { format: 'hashrate', lines: coin.models.map((m, i) => ({ label: m.name, color: m.color, y: mseries.slots[i].hashrate })) })
+          .legend
+            each m, i in coin.models
+              span
+                i.dot(style='--c:' + m.color)
+                | #{m.name}
+                b= F.hashrate(models[i].hashrate).value + ' ' + F.hashrate(models[i].hashrate).unit
+        section.panel.chart-card
+          +chartHead('Block time per model', null, null, 'Mean seconds per block on each model, ' + mbucket + '; target ' + coin.blockTime + 's overall')
+          .panel-body
+            +chart('m-model-time', mx, null, { format: 'seconds', zero: true, lines: coin.models.map((m, i) => ({ label: m.name, color: m.color, y: mseries.slots[i].blockTime })) })
+          .legend
+            each m, i in coin.models
+              span
+                i.dot(style='--c:' + m.color)
+                | #{m.name}
+                b= models[i].blockTime ? F.duration(models[i].blockTime) : '–'
   .grid-2.section
     section.panel.chart-card
       +chartHead('Estimated hashrate', hr.value, hr.unit, 'Average over ' + span + ', ' + bucketLabel.toLowerCase())

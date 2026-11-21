@@ -1,0 +1,140 @@
+{
+  "$comment": "Mining benchmarks for the calculator. Rates are evaluated attempts per second (H/s) on each model; NEB alternates Kepler (even heights) and TESS (odd heights). Add your miner or card with a pull request; see CONTRIBUTING.md.",
+  "coin": "neb",
+  "unit": "evaluated attempts per second (H/s) per model",
+  "benchmarks": [
+    {
+      "miner": "suprminer",
+      "version": "1.9.50",
+      "gpu": "RTX 5090",
+      "vendor": "nvidia",
+      "power_w": 600,
+      "rates": {
+        "kepler": 362000000,
+        "tess": 5370000000
+      },
+      "date": "2026-11-21",
+      "source": "https://github.com/ocminer/suprminer#readme"
+    },
+    {
+      "miner": "suprminer",
+      "version": "1.9.50",
+      "gpu": "RTX 5080",
+      "vendor": "nvidia",
+      "power_w": 400,
+      "rates": {
+        "kepler": 211000000,
+        "tess": 2340000000
+      },
+      "date": "2026-11-21",
+      "source": "https://github.com/ocminer/suprminer#readme"
+    },
+    {
+      "miner": "suprminer",
+      "version": "1.9.48",
+      "gpu": "RTX 4070 Ti SUPER",
+      "vendor": "nvidia",
+      "power_w": 285,
+      "rates": {
+        "kepler": 149300000,
+        "tess": 1550000000
+      },
+      "date": "2026-11-20",
+      "source": "https://github.com/ocminer/suprminer#readme"
+    },
+    {
+      "miner": "suprminer",
+      "version": "1.9.49",
+      "gpu": "RX 7900 XTX",
+      "vendor": "amd",
+      "power_w": 350,
+      "rates": {
+        "kepler": 97600000,
+        "tess": 874000000
+      },
+      "date": "2026-11-20",
+      "source": "https://github.com/ocminer/suprminer#readme"
+    },
+    {
+      "miner": "suprminer",
+      "version": "1.9.50",
+      "gpu": "RTX 3070",
+      "vendor": "nvidia",
+      "power_w": 250,
+      "rates": {
+        "kepler": 69900000,
+        "tess": 712000000
+      },
+      "date": "2026-11-21",
+      "source": "https://github.com/ocminer/suprminer#readme"
+    },
+    {
+      "miner": "suprminer",
+      "version": "1.9.49",
+      "gpu": "RX 7600 XT",
+      "vendor": "amd",
+      "power_w": 165,
+      "rates": {
+        "kepler": 29800000,
+        "tess": 311000000
+      },
+      "date": "2026-11-20",
+      "source": "https://github.com/ocminer/suprminer#readme"
+    },
+    {
+      "miner": "suprminer",
+      "version": "1.9.49",
+      "gpu": "Radeon Instinct MI50",
+      "vendor": "amd",
+      "power_w": 225,
+      "rates": {
+        "kepler": 19900000,
+        "tess": 287000000
+      },
+      "date": "2026-11-20",
+      "source": "https://github.com/ocminer/suprminer#readme"
+    },
+    {
+      "miner": "suprminer",
+      "version": "1.9.46",
+      "gpu": "RTX PRO 6000 Blackwell Server Edition",
+      "vendor": "nvidia",
+      "power_w": 600,
+      "rates": {
+        "kepler": 206260000,
+        "tess": 206980000
+      },
+      "date": "2026-11-18",
+      "source": "https://github.com/ocminer/suprminer#readme",
+      "note": "Older release, before attempt selection (1.9.48); current versions are faster."
+    },
+    {
+      "miner": "suprminer",
+      "version": "1.9.46",
+      "gpu": "H100 80GB HBM3",
+      "vendor": "nvidia",
+      "power_w": 700,
+      "rates": {
+        "kepler": 107750000,
+        "tess": 107650000
+      },
+      "date": "2026-11-18",
+      "source": "https://github.com/ocminer/suprminer#readme",
+      "note": "Older release, before attempt selection (1.9.48); current versions are faster."
+    },
+    {
+      "miner": "suprminer",
+      "version": "1.9.46",
+      "gpu": "A100 SXM4 80GB",
+      "vendor": "nvidia",
+      "power_w": 400,
+      "rates": {
+        "kepler": 55590000,
+        "tess": 56900000
+      },
+      "date": "2026-11-18",
+      "source": "https://github.com/ocminer/suprminer#readme",
+      "note": "Older release, before attempt selection (1.9.48); current versions are faster."
+    }
+  ]
+}

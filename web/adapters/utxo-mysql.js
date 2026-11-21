@@ -46,7 +46,9 @@ class UtxoMysqlAdapter {
     const bits = Number(b.bits);
     const target = BigInt(bits & 0xffffff) << BigInt(bits >>> 24);
     this.w0 = Number((1n << 256n) / (target + 1n));
-    this.g = { time: Number(b.time), carryover: BigInt(b.coinbase_out) - BigInt(b.reward) };
+    // the genesis row stores the whole genesis coinbase as its reward; the carry-over is that less the
+    // scheduled reward of height 0 (coin.genesisReward, base units)
+    this.g = { time: Number(b.time), carryover: BigInt(b.coinbase_out) - BigInt(this.coin.genesisReward || 0) };
     return this.g;
   }
 
@@ -94,6 +96,79 @@ class UtxoMysqlAdapter {
       return { t: start, blocks: Number(r.n), difficulty: Number(r.ad), miners: Number(r.miners), txs: Number(r.txs),
         hashrate: (Number(r.sd) * this.w0) / width, blockTime: Number(r.n) ? width / Number(r.n) : null };
     }) };
+  }
+
+  // coins issued per bucket (coinbase less fees, project share included) and the supply at the end of each bucket
+  async emissionSeries(range = '24h') {
+    await this.genesis();
+    const t = await this.tip();
+    let { span, bucket } = RANGES[range] || RANGES['24h'];
+    if (!span) {
+      span = Math.max(3600, t.time - this.g.time);
+      bucket = Math.max(3600, Math.ceil(span / 120 / 3600) * 3600);
+    } else {
+      bucket = Math.max(bucket, 3600); // hourly at least: issuance per hour is the unit people compare
+    }
+    const rows = await this.q('SELECT FLOOR(time / ?) * ? AS bk, COUNT(*) n, SUM(coinbase_out - fees) issued, MAX(supply) supply, ' +
+      'MAX(height) h FROM blocks WHERE time > ? AND height > 0 GROUP BY bk ORDER BY bk', [bucket, bucket, t.time - span]);
+    return { bucket, points: rows.map(r => {
+      const start = Number(r.bk);
+      const width = Math.max(60, Math.min(bucket, t.time - start + 60));
+      return { t: start, blocks: Number(r.n), issued: BigInt(r.issued), perHour: Number(BigInt(r.issued)) / width * 3600,
+        supply: BigInt(r.supply), height: Number(r.h) };
+    }) };
+  }
+
+  // issuance over the last `seconds`
+  async issuance(seconds) {
+    const t = await this.tip();
+    const [r] = await this.q('SELECT COUNT(*) n, COALESCE(SUM(coinbase_out - fees), 0) issued, COALESCE(SUM(fees), 0) fees ' +
+      'FROM blocks WHERE time > ? AND height > 0', [t.time - seconds]);
+    return { blocks: Number(r.n), issued: BigInt(r.issued), fees: BigInt(r.fees) };
+  }
+
+  // Per model (slot = height mod K): blocks, the time spent on them and the attempts they took.
+  // The interval of a block is its time minus its parent's, so it counts the time spent on that block's model.
+  async modelStats(seconds = 86400, k = 2) {
+    await this.genesis();
+    const t = await this.tip();
+    const rows = await this.q('SELECT x.height % ? slot, COUNT(*) n, SUM(x.dt) st, SUM(x.difficulty) sd, AVG(x.difficulty) ad, ' +
+      'MIN(x.dt) mindt, MAX(x.dt) maxdt FROM (SELECT b.height, b.difficulty, CAST(b.time AS SIGNED) - CAST(p.time AS SIGNED) dt ' +
+      'FROM blocks b JOIN blocks p ON p.height = b.height - 1 WHERE b.time > ? AND b.height > 0) x GROUP BY slot ORDER BY slot',
+      [k, t.time - seconds]);
+    const total = rows.reduce((s, r) => s + Math.max(0, Number(r.st)), 0) || 1;
+    return Array.from({ length: k }, (_, i) => {
+      const r = rows.find(x => Number(x.slot) === i);
+      if (!r) return { slot: i, blocks: 0, seconds: 0, timeShare: 0, blockTime: null, hashrate: 0, difficulty: 0 };
+      const st = Math.max(1, Number(r.st));
+      return { slot: i, blocks: Number(r.n), seconds: st, timeShare: st / total, blockTime: st / Number(r.n),
+        hashrate: (Number(r.sd) * this.w0) / st, difficulty: Number(r.ad) };
+    });
+  }
+
+  // per-model hashrate and block time per bucket (same buckets as series())
+  async modelSeries(range = '24h', k = 2) {
+    await this.genesis();
+    const t = await this.tip();
+    let { span, bucket } = RANGES[range] || RANGES['24h'];
+    if (!span) {
+      span = Math.max(3600, t.time - this.g.time);
+      bucket = Math.max(900, Math.ceil(span / 150 / 900) * 900);
+    }
+    const rows = await this.q('SELECT FLOOR(x.time / ?) * ? AS bk, x.height % ? slot, COUNT(*) n, SUM(x.dt) st, SUM(x.difficulty) sd ' +
+      'FROM (SELECT b.height, b.time, b.difficulty, CAST(b.time AS SIGNED) - CAST(p.time AS SIGNED) dt FROM blocks b ' +
+      'JOIN blocks p ON p.height = b.height - 1 WHERE b.time > ? AND b.height > 0) x GROUP BY bk, slot ORDER BY bk',
+      [bucket, bucket, k, t.time - span]);
+    const by = new Map();
+    for (const r of rows) {
+      const b = Number(r.bk);
+      if (!by.has(b)) by.set(b, Array.from({ length: k }, () => ({ hashrate: null, blockTime: null })));
+      const st = Number(r.st);
+      if (st > 0) by.get(b)[Number(r.slot)] = { hashrate: (Number(r.sd) * this.w0) / st, blockTime: st / Number(r.n) };
+    }
+    const x = [...by.keys()].sort((a, b) => a - b);
+    return { bucket, x, slots: Array.from({ length: k }, (_, i) => ({
+      hashrate: x.map(b => by.get(b)[i].hashrate), blockTime: x.map(b => by.get(b)[i].blockTime) })) };
   }
 
   // ---------------------------------------------------------------- lists
