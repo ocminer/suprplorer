@@ -74,6 +74,16 @@ check turns bad or recovers.
 model of the coin (see [CONTRIBUTING.md](CONTRIBUTING.md)). `tools/benchmarks.py suprminer neb`
 imports the newest rates from the suprminer README; run it daily to pick up new releases.
 
+## Mining calculator
+
+`/<coin>/calculator` merges the benchmarks file of the repository with automatic imports
+(`SUPRPLORER_BENCHMARK_DIRS`, default `/opt/suprplorer/benchmarks:/var/lib/suprplorer/benchmarks`; newer
+miner version wins, the repository file wins on the same version). For each model it takes the network
+hashrate and blocks per day of the last 24 hours; a card's expected blocks per day are the sum over the
+models of `blocks per day x card rate / network rate`, times the miner reward (reward less the project
+share, plus average fees), less the pool fee and the fee of the pool's miner. Price fields stay empty
+until a price is published in Redis as `<coin>:price` (`{"usd": …, "sources": […]}`).
+
 ## Configuration
 
 Everything comes from environment variables; nothing is configured in the repository.

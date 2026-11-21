@@ -9,6 +9,7 @@ const express = require('express');
 const { createClient } = require('redis');
 const { loadCoins } = require('./lib/coins');
 const F = require('./lib/format');
+const CALC = require('./lib/calc');
 
 const PORT = Number(process.env.PORT || 3100);
 const COINS_DIR = process.env.SUPRPLORER_COINS_DIR || path.join(__dirname, 'coins');
@@ -385,6 +386,57 @@ function coinRouter(coin, redis) {
       expectedPerHour: Number(rNow) * 3600 / coin.blockTime / 10 ** dec });
   }));
 
+  // mining calculator: expected coins per card and pool from benchmarks and the network per model (last 24h)
+  r.get('/calculator', cached(), wrap(async (req, res) => {
+    const models = coin.models || [];
+    if (models.length < 1) return fail(res, 404, 'Not available', 'This coin has no mining calculator yet.');
+    const K = models.length;
+    const WIN = 86400;
+    const [tip, stats, d1, mtrend, priceRaw] = await Promise.all([D.tip(), D.modelStats(WIN, K), D.issuance(WIN),
+      D.modelSeries('30d', K), redis.get(`${coin.prefix}:price`).catch(() => null)]);
+    const net = CALC.network(models, stats, WIN);
+    const reward = Number(rewardAt(tip.height)) / 10 ** dec;
+    const project = Math.floor(Number(rewardAt(tip.height)) * 5 / 100) / 10 ** dec;
+    const feesPerBlock = d1.blocks ? Number(d1.fees) / 10 ** dec / d1.blocks : 0;
+    const minerReward = reward - project + feesPerBlock;
+    // pools from the labels file (fee known) plus solo mining on an own node
+    const seen = new Set();
+    const pools = [];
+    for (const l of Object.values(coin.labelMap)) {
+      if (l.category !== 'pool' || l.fee == null || seen.has(l.name)) continue;
+      seen.add(l.name);
+      pools.push({ name: l.name, fee: l.fee, minerFee: l.minerFee || 0, verified: !!l.feeSource, url: l.url, color: l.color });
+    }
+    pools.sort((a, b) => (a.fee + a.minerFee) - (b.fee + b.minerFee) || a.name.localeCompare(b.name));
+    pools.push({ name: 'Solo (own node)', fee: 0, minerFee: 0, verified: true, solo: true, color: '#8b93ad' });
+    const ids = models.map(m => m.id);
+    const cards = CALC.loadBenchmarks(coin.id, ids).map(b => {
+      const bpd = CALC.blocksPerDay(b.rates, net);
+      return { gpu: b.gpu, vendor: b.vendor, miner: b.miner, version: b.version, power: b.power_w, rates: b.rates, date: b.date,
+        source: b.source, note: b.note || null, auto: b.auto, blocksPerDay: bpd, grossPerDay: bpd * minerReward };
+    }).sort((a, b) => b.grossPerDay - a.grossPerDay);
+    // 30 days of yield for the strongest cards: coins per day per bucket at the network of that bucket
+    const trendCards = cards.filter((c, i, a) => a.findIndex(x => x.gpu === c.gpu) === i).slice(0, 4);
+    const tcolors = ['#38d5c3', '#f2b84b', '#8e7cf8', '#5aa9ff'];
+    const trend = { x: mtrend.x, lines: trendCards.map((c, ci) => ({ label: c.gpu, color: tcolors[ci], y: mtrend.x.map((_, i) => {
+      let sum = 0, ok = false;
+      models.forEach((m, k) => {
+        const h = mtrend.slots[k].hashrate[i], n = mtrend.slots[k].blocks[i];
+        // the newest window is still filling: count its blocks over the time it has actually covered
+        const width = Math.max(600, Math.min(mtrend.bucket, tip.time - mtrend.x[i]));
+        if (h > 0 && n) { sum += (n * 86400 / width) * c.rates[m.id] / h; ok = true; }
+      });
+      return ok ? sum * minerReward : null;
+    }) })) };
+    const price = priceRaw ? JSON.parse(priceRaw) : null;
+    render(res, 'calculator', `${coin.name} Mining Calculator – coins per GPU, pool fees and power cost`, {
+      desc: `${coin.name} mining calculator: expected ${coin.symbol} per day for every benchmarked GPU on each pool, after fees, with power cost and break-even price, from the live network hashrate of each model.`,
+      tip, net, cards, pools, minerReward, reward, project, feesPerBlock, trend, price, defaultPower: 0.30,
+      calcData: { models: models.map(m => ({ id: m.id, name: m.name })), net: net.map(n => ({ id: n.id, hashrate: n.hashrate, blocksPerDay: n.blocksPerDay })),
+        minerReward, pools: pools.map(p => ({ name: p.name, fee: p.fee, minerFee: p.minerFee })), price: price && price.usd ? price.usd : null,
+        cards: cards.map(c => ({ gpu: c.gpu, power: c.power, blocksPerDay: c.blocksPerDay })) } });
+  }));
+
   r.get('/richlist', cached(), wrap(async (req, res) => {
     const [rl, tip] = await Promise.all([D.richlist(100), D.tip()]);
     render(res, 'richlist', `${coin.name} Rich List – top 100 addresses`, { rl, tip,
@@ -540,7 +592,7 @@ async function main() {
   }));
   app.get('/sitemap-pages.xml', (req, res) => res.type('application/xml').set('Cache-Control', 'public, max-age=3600').send(xml(
     '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">' + loc('/', null, 'daily', '0.8') +
-    coins.map(c => loc(c.base + '/', null, 'always', '1.0') + ['blocks', 'mining', 'pools', 'emission', 'richlist', 'network']
+    coins.map(c => loc(c.base + '/', null, 'always', '1.0') + ['blocks', 'mining', 'pools', 'calculator', 'emission', 'richlist', 'network']
       .map(p => loc(`${c.base}/${p}`, null, 'hourly', '0.8')).join('')).join('') + '</urlset>')));
 
   app.get('/_health', async (req, res) => {

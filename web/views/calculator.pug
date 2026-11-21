@@ -1,0 +1,149 @@
+extends layout
+block content
+  - var sym = coin.symbol
+  - var def = pools.find(p => p.name === 'Suprnova') || pools[0]
+  - var keep = 1 - (def.fee + def.minerFee) / 100
+  - var kwh = c => c.power * 24 / 1000
+  - var fmtC = v => v >= 100 ? F.num(v, 0) : v >= 1 ? F.num(v, 2) : F.num(v, 3)
+  - var rate = v => { var h = F.hashrate(v); return h.value + ' ' + h.unit; }
+  - var maxDay = cards.length ? cards[0].grossPerDay * keep : 1
+  .page-head
+    h1 Mining calculator
+      span.sub Expected #{sym} per day for each GPU, after pool fees, from the live network hashrate of each model.
+  script#calc-data(type='application/json')!= JSON.stringify(calcData).replace(/</g, '\\u003c')
+
+  form.panel.calc-controls(data-calc='', onsubmit='return false')
+    label
+      span Pool
+      select(name='pool')
+        each p, i in pools
+          option(value=i, selected=p === def)= p.name + ' (' + (p.fee + p.minerFee) + '%' + (p.verified ? '' : '*') + ')'
+    label
+      span Electricity
+      .input-unit
+        input(name='power', type='number', inputmode='decimal', min='0', step='0.01', value=defaultPower.toFixed(2))
+        i $/kWh
+    label
+      span #{sym} price
+      .input-unit
+        input(name='price', type='number', inputmode='decimal', min='0', step='any', placeholder=price && price.usd ? '' : 'not traded yet', value=price && price.usd ? price.usd : null)
+        i $
+    label
+      span Cards
+      .input-unit
+        input(name='count', type='number', inputmode='numeric', min='1', max='100000', step='1', value='1')
+        i ×
+
+  .stats.four.section
+    each n in net
+      - var h = F.hashrate(n.hashrate)
+      +stat(n.name + ' network', h.value, h.unit, F.num(n.blocksPerDay, 0) + ' blocks a day, ' + (n.blockTime ? F.duration(n.blockTime) : '–') + ' each')
+    +stat('Miner reward', F.num(minerReward, 2), sym, 'Per block: ' + F.num(reward - project, 2) + ' reward after the 5% project share, ' + F.num(feesPerBlock, 4) + ' average fees')
+    +stat('Market price', price && price.usd ? '$' + price.usd : '–', null, price && price.usd ? 'Average of ' + (price.sources || []).join(', ') : sym + ' is not traded yet. Enter a price to see profit.')
+
+  section.panel.section
+    .panel-head
+      div
+        h2 #{sym} per day by card
+        .note.calc-pool-note On #{def.name}, after #{def.fee + def.minerFee}% fees, last 24h network
+    ul.hbars.calc-bars
+      each c, i in cards
+        - var day = c.grossPerDay * keep
+        li(data-i=i)
+          span.lbl
+            b= c.gpu
+            span.dim  #{c.power} W
+          span.track: i(data-f='bar', style='width:' + (maxDay ? (100 * day / maxDay).toFixed(1) : 0) + '%; --c:' + (c.vendor === 'amd' ? '#f07178' : coin.accent))
+          span.v(data-f='day')= fmtC(day)
+
+  section.panel.section
+    .panel-head
+      h2 All cards
+      span.aside
+        a(href='https://github.com/ocminer/suprplorer/blob/main/CONTRIBUTING.md#add-mining-benchmarks-miner-authors-and-miners', rel='noopener', target='_blank') Add your benchmark ↗
+    .table-scroll
+      table.t.calc-t
+        thead
+          tr
+            th GPU
+            each m in coin.models
+              th.num(title='Evaluated attempts per second on ' + m.name + ' blocks')
+                i.dot(style='--c:' + m.color)
+                |  #{m.name}
+            th.num #{sym}/day
+            th.num.hide-sm #{sym}/kWh
+            th.num Power/day
+            th.num(title='Price at which the coins mined pay for the electricity') Break-even
+            th.num.calc-profit-h(hidden=!(price && price.usd)) Profit/day
+            th.num.hide-sm(title='Average time for one card to find a block alone') Solo, per block
+        tbody
+          each c, i in cards
+            - var day = c.grossPerDay * keep
+            - var cost = kwh(c) * defaultPower
+            tr(data-i=i)
+              td
+                b= c.gpu
+                .dim(style='font-size:12.5px')
+                  | #{c.power} W, #{c.miner} #{c.version}
+                  if c.note
+                    span.unverified(title=c.note)  *
+                  |
+                  |
+                  a.ext(href=c.source, rel='noopener nofollow ugc', target='_blank', title='Source of the measurement, ' + c.date) ↗
+              each m in coin.models
+                td.num= rate(c.rates[m.id])
+              td.num: b(data-f='day')= fmtC(day)
+              td.num.hide-sm(data-f='kwh')= fmtC(day / kwh(c))
+              td.num(data-f='cost')= '$' + F.num(cost, 2)
+              td.num(data-f='be')= day > 0 ? '$' + (cost / day).toPrecision(3) : '–'
+              td.num(data-f='profit', hidden=!(price && price.usd)) –
+              td.num.hide-sm(data-f='solo')= c.blocksPerDay > 0 ? F.duration(86400 / c.blocksPerDay) : '–'
+    .table-note
+      | Break-even: the #{sym} price at which a day of coins pays a day of electricity.
+      if cards.some(c => c.note)
+        |  * Older miner release; current versions are faster.
+      |  Rates come from the miners' published benchmarks; the newest suprminer results are imported every day.
+
+  section.panel.section
+    .panel-head
+      div
+        h2 #{sym} per day by card and pool
+        .note After each pool's fee (and the fee of its own miner, where it has one). Solo mining has no fee but pays only when your own rigs find a block.
+    .table-scroll
+      table.t.matrix-t
+        thead
+          tr
+            th GPU
+            each p in pools
+              th.num
+                if p.color && !p.solo
+                  i.dot(style='--c:' + p.color)
+                |  #{p.name}
+                .dim(style='font-size:12px; font-weight:400') #{p.fee + p.minerFee}%#{p.verified ? '' : '*'}
+        tbody
+          each c in cards.filter((x, i, a) => a.findIndex(y => y.gpu === x.gpu) === i)
+            tr
+              td: b= c.gpu
+              each p in pools
+                td.num= fmtC(c.grossPerDay * (1 - (p.fee + p.minerFee) / 100))
+    .table-note * Fee reported to us but not verified. Pools can publish their fee in the labels file on GitHub.
+
+  if trend.lines.length && trend.x.length > 1
+    section.panel.chart-card.section
+      +chartHead('Yield over 30 days', null, null, sym + ' per day for one card at the network of each 6-hour window, before pool fees')
+      .panel-body
+        +chart('c-trend', trend.x, null, { format: 'coins', unit: sym + '/day', zero: true, lines: trend.lines, tall: true })
+      .legend
+        each l in trend.lines
+          - var lv = l.y.filter(v => v != null).slice(-1)[0]
+          span
+            i.dot(style='--c:' + l.color)
+            | #{l.label}
+            b= lv != null ? fmtC(lv) : '–'
+
+  section.panel.section
+    .panel-head
+      h2 How the calculator works
+    .panel-body.prose
+      p #{coin.name} alternates its models by block height, and a card runs at a very different speed on each, so a single hashrate number would mislead. For every model the calculator takes the network hashrate and the number of blocks a day from the last 24 hours, and the card's own rate on that model. The card's expected blocks a day on a model are that model's blocks a day times the card's share of that model's hashrate; the sum over the models, times the miner reward of #{F.num(minerReward, 2)} #{sym}, is the yield.
+      p These are expectations: on a pool the payouts follow them closely, solo the time between blocks varies a lot. Rising network hashrate lowers the yield over time; the 30-day chart shows how fast it has been moving.

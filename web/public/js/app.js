@@ -206,6 +206,52 @@
   if (liveRegion) setInterval(function () { if (!document.hidden) refreshRegion(false); }, 60000); // ages, miners
   document.addEventListener('visibilitychange', function () { if (!document.hidden) pollTip(); });
 
+  // ------------------------------------------------------------ mining calculator
+  var calcEl = document.getElementById('calc-data');
+  var form = document.querySelector('[data-calc]');
+  if (calcEl && form) {
+    var D = JSON.parse(calcEl.textContent);
+    var num = function (v, d) { return v.toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d }); };
+    var coinsFmt = function (v) { return v >= 100 ? num(v, 0) : v >= 1 ? num(v, 2) : num(v, 3); };
+    var usd = function (v) { return (v < 0 ? '−$' : '$') + num(Math.abs(v), Math.abs(v) < 10 ? 2 : 0); };
+    var sig = function (v) { return '$' + (v >= 1 ? v.toFixed(2) : v.toPrecision(3)); };
+    var get = function (n) { var x = parseFloat(form.elements[n].value); return isFinite(x) && x >= 0 ? x : null; };
+    var setF = function (root, f, txt) { var el = root.querySelector('[data-f="' + f + '"]'); if (el) el.textContent = txt; };
+    var update = function () {
+      var pool = D.pools[+form.elements.pool.value] || D.pools[0];
+      var keep = 1 - (pool.fee + pool.minerFee) / 100;
+      var power = get('power') || 0, price = get('price'), count = Math.max(1, Math.round(get('count') || 1));
+      var days = D.cards.map(function (c) { return c.blocksPerDay * D.minerReward * keep * count; });
+      var max = Math.max.apply(null, days.concat([1e-12]));
+      D.cards.forEach(function (c, i) {
+        var day = days[i], kwh = c.power * 24 / 1000 * count, cost = kwh * power;
+        document.querySelectorAll('[data-i="' + i + '"]').forEach(function (row) {
+          setF(row, 'day', coinsFmt(day));
+          setF(row, 'kwh', coinsFmt(kwh ? day / kwh : 0));
+          setF(row, 'cost', usd(cost));
+          setF(row, 'be', day > 0 ? sig(cost / day) : '–');
+          var solo = c.blocksPerDay > 0 ? 86400 / (c.blocksPerDay * count) : 0;
+          setF(row, 'solo', !solo ? '–' : solo < 3600 ? Math.round(solo / 60) + 'm' : solo < 172800 ? (solo / 3600).toFixed(1) + 'h' : (solo / 86400).toFixed(1) + 'd');
+          var p = row.querySelector('[data-f="profit"]');
+          if (p) {
+            p.hidden = price == null;
+            if (price != null) { var pr = day * price - cost; p.textContent = usd(pr); p.className = 'num ' + (pr < 0 ? 'neg' : 'pos'); }
+          }
+          var bar = row.querySelector('[data-f="bar"]');
+          if (bar) bar.style.width = (100 * day / max).toFixed(1) + '%';
+        });
+      });
+      var ph = document.querySelector('.calc-profit-h');
+      if (ph) ph.hidden = price == null;
+      var note = document.querySelector('.calc-pool-note');
+      if (note) note.textContent = 'On ' + pool.name + ', after ' + (pool.fee + pool.minerFee) + '% fees, ' +
+        (count > 1 ? count + ' cards, ' : '') + 'last 24h network';
+    };
+    form.addEventListener('input', update);
+    form.addEventListener('change', update);
+    update();
+  }
+
   // ------------------------------------------------------------ search shortcut
   document.addEventListener('keydown', function (e) {
     var t = e.target.tagName;

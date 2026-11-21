@@ -162,13 +162,14 @@ class UtxoMysqlAdapter {
     const by = new Map();
     for (const r of rows) {
       const b = Number(r.bk);
-      if (!by.has(b)) by.set(b, Array.from({ length: k }, () => ({ hashrate: null, blockTime: null })));
+      if (!by.has(b)) by.set(b, Array.from({ length: k }, () => ({ hashrate: null, blockTime: null, blocks: 0 })));
       const st = Number(r.st);
-      if (st > 0) by.get(b)[Number(r.slot)] = { hashrate: (Number(r.sd) * this.w0) / st, blockTime: st / Number(r.n) };
+      if (st > 0) by.get(b)[Number(r.slot)] = { hashrate: (Number(r.sd) * this.w0) / st, blockTime: st / Number(r.n), blocks: Number(r.n) };
     }
     const x = [...by.keys()].sort((a, b) => a - b);
     return { bucket, x, slots: Array.from({ length: k }, (_, i) => ({
-      hashrate: x.map(b => by.get(b)[i].hashrate), blockTime: x.map(b => by.get(b)[i].blockTime) })) };
+      hashrate: x.map(b => by.get(b)[i].hashrate), blockTime: x.map(b => by.get(b)[i].blockTime),
+      blocks: x.map(b => by.get(b)[i].blocks) })) };
   }
 
   // ---------------------------------------------------------------- lists
