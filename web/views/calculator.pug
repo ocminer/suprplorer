@@ -126,7 +126,7 @@ block content
               td: b= c.gpu
               each p in pools
                 td.num= fmtC(c.grossPerDay * (1 - (p.fee + p.minerFee) / 100))
-    .table-note * Fee reported to us but not verified. Pools can publish their fee in the labels file on GitHub.
+    .table-note * No public fee page; the fee was confirmed to us directly. Pools can publish their fee in the labels file on GitHub.
 
   if trend.lines.length && trend.x.length > 1
     section.panel.chart-card.section

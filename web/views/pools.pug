@@ -120,7 +120,7 @@ block content
               td.num
                 if p.fee != null
                   - var tot = p.fee + (p.minerFee || 0)
-                  span(title=(p.minerFee ? p.fee + '% pool + ' + p.minerFee + '% miner fee' : p.fee + '% pool fee') + (p.feeSource ? '' : ', reported, not verified'))
+                  span(title=(p.minerFee ? p.fee + '% pool + ' + p.minerFee + '% miner fee' : p.fee + '% pool fee') + (p.feeSource ? '' : ', confirmed to us, no public fee page'))
                     = (Math.round(tot * 100) / 100) + '%'
                     if !p.feeSource
                       span.unverified *
@@ -134,7 +134,7 @@ block content
                 .dim(style='font-size:12.5px'): +age(p.lastTime)
           if !pools.length
             tr: td.empty(colspan=7) No labelled pool found a block in this range.
-    .table-note Fees as published by each pool. * Reported to us but not verified. Pools can add or correct their fee with a pull request to the labels file on GitHub.
+    .table-note Fees as published by each pool. * No public fee page; the fee was confirmed to us directly. Pools can add or correct their fee with a pull request to the labels file on GitHub.
   section.panel.section
     .panel-head
       h2 Unlabelled miners
