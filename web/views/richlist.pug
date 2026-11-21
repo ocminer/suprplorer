@@ -39,6 +39,8 @@ block content
             th.rank #
             th Address
             th.num Balance
+            if price && price.usd != null
+              th.num.hide-sm Value
             th.num Share
             th.num.hide-sm Txs
             th.num.hide-sm Last active
@@ -53,6 +55,8 @@ block content
                     a.tag(href=coin.base + '/address/' + r.address, style='--c:' + e.color)= e.name
                   a.mono(href=coin.base + '/address/' + r.address, title=r.address)= F.short(r.address, e ? 8 : 18, 8)
               td.num: +amount(r.balance, { nosym: true })
+              if price && price.usd != null
+                td.num.hide-sm.dim= '$' + F.compact(Number(r.balance) / 10 ** coin.decimals * price.usd, 2)
               td.num
                 .share
                   .bar: i(style='width:' + Math.min(100, pct(r.balance) * 4).toFixed(1) + '%')

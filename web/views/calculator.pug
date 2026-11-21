@@ -39,7 +39,7 @@ block content
       - var h = F.hashrate(n.hashrate)
       +stat(n.name + ' network', h.value, h.unit, F.num(n.blocksPerDay, 0) + ' blocks a day, ' + (n.blockTime ? F.duration(n.blockTime) : '–') + ' each')
     +stat('Miner reward', F.num(minerReward, 2), sym, 'Per block: ' + F.num(reward - project, 2) + ' reward after the 5% project share, ' + F.num(feesPerBlock, 4) + ' average fees')
-    +stat('Market price', price && price.usd ? '$' + price.usd : '–', null, price && price.usd ? 'Average of ' + (price.sources || []).join(', ') : sym + ' is not traded yet. Enter a price to see profit.')
+    +stat('Market price', price && price.usd ? '$' + price.usd : '–', null, price && price.usd ? (price.sources || []).join(', ') + ', see Market' : sym + ' is not traded yet. Enter a price to see profit.')
 
   section.panel.section
     .panel-head

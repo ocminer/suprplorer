@@ -14,7 +14,8 @@ block content
         if label && label.url
           a.muted(href=label.url, rel='noopener nofollow ugc', target='_blank', style='font-size:14px')= label.url
   .stats
-    +stat('Balance', F.amount(a.balance, coin.decimals, 2, 8), coin.symbol, a.rank ? 'Rank #' + F.num(a.rank) + ' in the <a href="' + coin.base + '/richlist">rich list</a>' : 'Empty')
+    - var usdBal = price && price.usd != null ? Number(a.balance) / 10 ** coin.decimals * price.usd : null
+    +stat('Balance', F.amount(a.balance, coin.decimals, 2, 8), coin.symbol, (usdBal != null ? '≈ $' + F.num(usdBal, usdBal < 100 ? 2 : 0) + '. ' : '') + (a.rank ? 'Rank #' + F.num(a.rank) + ' in the <a href="' + coin.base + '/richlist">rich list</a>' : 'Empty'))
     +stat('Received', F.amount(a.received, coin.decimals, 2, 4), coin.symbol, F.num(a.utxos) + ' unspent outputs')
     +stat('Sent', F.amount(a.sent, coin.decimals, 2, 4), coin.symbol, F.num(a.txs) + ' transactions')
     if a.blocksMined

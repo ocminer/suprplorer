@@ -104,6 +104,16 @@ of each model on held-out samples, its training steps and a diagram of its hidde
 links. Blocks show their finality: pending, final at 60 confirmations (deeper than any allowed
 reorganisation) and spendable at 100 (coinbase maturity), and list their training share records.
 
+## Price and market
+
+`indexer/price_watch.py` (every 2 minutes) reads a price endpoint (`PRICE_URL`, JSON with `usd`, `btc`,
+`change24hPct`, `high24h`, `low24h`, `volume24hNeb`, `volume24hUsdt`, `source`, `market`, `url`, `fetchedAt`,
+`stale`), stores each new reading in the `prices` table and publishes the current one in Redis
+(`<coin>:price`). Without a fresh price (none, stale, older than six hours) the key is removed and the
+site shows no price. The Market page shows price, 24h range and volume, market cap, fully diluted value,
+miner income in dollars, hashprice (USD per TH/s per day) and GPU profit at the current price; the header,
+overview, address pages, rich list and calculator use the same price.
+
 ## Configuration
 
 Everything comes from environment variables; nothing is configured in the repository.
@@ -117,6 +127,7 @@ Everything comes from environment variables; nothing is configured in the reposi
 | `GA4_ID`, `GOOGLE_SITE_VERIFICATION` | web | optional Google Analytics / Search Console |
 | `NTFY_URL` | emission watch | optional ntfy topic URL for alerts |
 | `MODEL_HISTORY_URL` | model watch | published model accuracy history to import and verify |
+| `PRICE_URL` | price watch | market price endpoint |
 | `EMISSION_1H_MAX`, `EMISSION_6H_MAX`, `POOL_MAX_SHARE`, `POOL_WINDOW` | emission watch | alert thresholds (defaults 1.5, 1.25, 0.51, 360 blocks) |
 
 Run the node, the indexer (`python indexer/indexer.py`) and the web app (`cd web && npm ci && node

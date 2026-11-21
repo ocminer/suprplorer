@@ -1,0 +1,98 @@
+extends layout
+block content
+  - var sym = coin.symbol
+  - var usdF = v => { if (v == null) return '–'; var a = Math.abs(v); return (v < 0 ? '−$' : '$') + (a >= 1000 ? F.num(a, 0) : a >= 1 ? F.num(a, 2) : a >= 0.01 ? F.num(a, 3) : a.toPrecision(3)); }
+  - var big = v => v == null ? '–' : '$' + F.compact(v, 2)
+  - var usd = price ? price.usd : null
+  .page-head
+    h1 Price and market
+      span.sub
+        if price
+          | #{sym}/USDT on #{price.source}, read
+          |
+          span(data-ts=price.fetchedAt)= F.ago(price.fetchedAt)
+          | .
+        else
+          | No fresh market price right now.
+    +range(range, coin.base + '/market')
+
+  if !price
+    section.panel.section
+      .panel-body.prose
+        p There is no current price for #{sym}: the exchange reading is missing or older than six hours, so the explorer shows none rather than an outdated one. Coin figures everywhere else are unaffected.
+  else
+    - var ch = price.change24h
+    - var lo = price.low24h, hi = price.high24h
+    - var pos = hi > lo ? Math.min(100, Math.max(0, 100 * (usd - lo) / (hi - lo))) : 50
+    .stats.four
+      +stat('Price', usdF(usd), null, price.btc ? F.num(price.btc * 1e8, 0) + ' sats' : null)
+        if ch != null
+          .stat-aside
+            span 24h
+            b(class=ch >= 0 ? 'up' : 'down')= (ch >= 0 ? '+' : '−') + Math.abs(ch).toFixed(2) + '%'
+      +stat('24h range', usdF(lo) + ' – ' + usdF(hi), null)
+        .range-bar(title='Current price within the 24h range')
+          i(style='left:' + pos.toFixed(1) + '%')
+      +stat('24h volume', big(price.volumeUsd), null, F.num(price.volumeCoin, 0) + ' ' + sym + ' traded')
+      +stat('Market cap', big(supply * usd), null, F.compact(supply, 2) + ' ' + sym + ' in circulation')
+      +stat('Fully diluted', big(maxSupply * usd), null, 'At the ' + F.compact(maxSupply, 2) + ' ' + sym + ' maximum')
+      +stat('Miners earn, 24h', big(earned24 * usd), null, F.num(earned24, 0) + ' ' + sym + ' in rewards and fees')
+      +stat('Hashprice', hashprice != null ? usdF(hashprice) : '–', null, 'Per TH/s per day: what one TH/s of the network average earned in the last 24h')
+      +stat('Issued, 24h', big(issued24 * usd), null, F.num(issued24, 0) + ' new ' + sym + ', project share included')
+
+    - var P = hist.points
+    .grid-2.section
+      section.panel.chart-card
+        +chartHead('Price', usdF(usd), null, 'Average per ' + (hist.bucket >= 3600 ? (hist.bucket / 3600) + ' hours' : (hist.bucket / 60) + ' minutes') + (since ? ', recorded since ' + F.utc(since.since).slice(0, 16) : ''))
+        .panel-body
+          if P.length > 1
+            +chart('mk-price', P.map(p => p.t), P.map(p => p.usd), { format: 'usd', unit: 'USD', color: coin.accent })
+          else
+            .chart: .chart-empty The price history starts with the first readings; the chart fills in within the hour.
+      section.panel.chart-card
+        +chartHead('24h volume', big(price.volumeUsd), null, 'Rolling 24-hour volume on ' + price.source + ', as reported at each reading')
+        .panel-body
+          if P.filter(p => p.vol != null).length > 1
+            +chart('mk-vol', P.map(p => p.t), P.map(p => p.vol), { format: 'usd', unit: 'USD', zero: true, color: '#5aa9ff' })
+          else
+            .chart: .chart-empty Volume history fills in with the next readings.
+
+    section.panel.section
+      .panel-head
+        div
+          h2 GPU mining at #{usdF(usd)}
+          .note On #{sui.name} (#{sui.fee + sui.minerFee}% fees) at $#{POWER.toFixed(2)}/kWh, last 24h network. Other pools, power prices and card counts on the calculator.
+        a.aside(href=coin.base + '/calculator') Open the calculator
+      .table-scroll
+        table.t
+          thead
+            tr
+              th GPU
+              th.num #{sym}/day
+              th.num Revenue/day
+              th.num Power/day
+              th.num Profit/day
+              th.num(title='The ' + sym + ' price at which a day of coins pays a day of electricity') Break-even
+          tbody
+            each c in cards
+              tr
+                td
+                  b= c.gpu
+                  span.dim(style='margin-left:8px; font-size:12.5px')= c.power + ' W'
+                td.num= F.num(c.coins, 2)
+                td.num= usdF(c.revenue)
+                td.num.dim= usdF(c.cost)
+                td.num: b(class=c.profit >= 0 ? 'pos' : 'neg')= usdF(c.profit)
+                td.num(class=c.breakEven != null && c.breakEven < usd ? 'pos' : 'neg')= c.breakEven != null ? '$' + (c.breakEven >= 1 ? c.breakEven.toFixed(2) : c.breakEven.toPrecision(3)) : '–'
+
+    section.panel.section
+      .panel-head
+        h2 Where the price comes from
+      .panel-body.prose
+        p The price is the last trade price of #{sym}/USDT on #{price.source}, read by the Suprnova pool and passed on to this explorer every few minutes. A reading older than two hours is flagged and one older than six hours is dropped, so no page shows a stale price.
+          if price.url
+            |  Market:
+            |
+            a(href=price.url, rel='noopener nofollow', target='_blank')= price.source + ' ' + price.market
+            | .
+        p Market cap is the circulating supply times the price. Hashprice divides what miners earned in the last 24 hours, in dollars, by the network's average hashrate in TH/s. It is the standard yardstick for comparing mining income over time.

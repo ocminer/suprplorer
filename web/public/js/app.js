@@ -31,6 +31,7 @@
     compact: compact,
     int: function (v) { return Math.round(v).toLocaleString('en-US'); },
     coins: function (v) { return v.toLocaleString('en-US', { maximumFractionDigits: 2 }); },
+    usd: function (v) { return '$' + (Math.abs(v) >= 100 ? v.toLocaleString('en-US', { maximumFractionDigits: 0 }) : Math.abs(v) >= 1 ? v.toFixed(2) : v.toPrecision(3)); },
     seconds: function (v) { return v < 90 ? Math.round(v) + 's' : (v / 60).toFixed(1) + 'm'; }
   };
   function fmtDate(ts, span) {

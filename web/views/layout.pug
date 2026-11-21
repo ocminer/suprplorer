@@ -58,6 +58,12 @@ html(lang='en')
               i.pulse(aria-hidden='true')
               span.live-word Live explorers
           .strip-links
+            if coin && price && price.usd != null
+              a.price-chip(href=coin.base + '/market', title=coin.symbol + ' on ' + price.source + ' ' + price.market + ', read ' + F.ago(price.fetchedAt))
+                span.dim= coin.symbol
+                b= '$' + (price.usd < 1 ? price.usd.toPrecision(3) : F.num(price.usd, 2))
+                if price.change24h != null
+                  span(class=price.change24h >= 0 ? 'up' : 'down')= (price.change24h >= 0 ? '+' : '−') + Math.abs(price.change24h).toFixed(1) + '%'
             a.pool-link(href=site.pool, rel='noopener', title='NEB mining pool by Suprnova')
               span.hide-sm Mine #{coin ? coin.symbol : 'NEB'} at
               |  Suprnova
@@ -78,7 +84,7 @@ html(lang='en')
                 span.brand-by by Suprnova
           if coin
             nav.nav(aria-label='Main')
-              each item in [['', 'Overview', 'overview'], ['/blocks', 'Blocks', 'blocks'], ['/activity', 'Activity', 'activity'], ['/models', 'Models', 'models'], ['/mining', 'Mining', 'mining'], ['/pools', 'Pools', 'pools'], ['/calculator', 'Calculator', 'calculator'], ['/emission', 'Emission', 'emission'], ['/richlist', 'Rich list', 'richlist'], ['/network', 'Network', 'network']]
+              each item in [['', 'Overview', 'overview'], ['/blocks', 'Blocks', 'blocks'], ['/activity', 'Activity', 'activity'], ['/models', 'Models', 'models'], ['/mining', 'Mining', 'mining'], ['/pools', 'Pools', 'pools'], ['/calculator', 'Calculator', 'calculator'], ['/market', 'Market', 'market'], ['/emission', 'Emission', 'emission'], ['/richlist', 'Rich list', 'richlist'], ['/network', 'Network', 'network']]
                 a(href=coin.base + item[0] + (item[0] ? '' : '/'), aria-current=(page === item[2] || (item[2] === 'blocks' && (page === 'block' || page === 'miner-blocks')) ? 'page' : null))= item[1]
             form.topsearch(action=coin.base + '/search', method='get', role='search')
               +searchIcon
@@ -108,6 +114,7 @@ html(lang='en')
               a(href=coin.base + '/mining') Mining
               a(href=coin.base + '/pools') Mining pools
               a(href=coin.base + '/calculator') Mining calculator
+              a(href=coin.base + '/market') Price and market
               a(href=coin.base + '/emission') Emission
               a(href=coin.base + '/richlist') Rich list
               a(href=coin.base + '/network') Network

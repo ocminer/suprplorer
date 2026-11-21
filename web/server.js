@@ -155,6 +155,8 @@ function coinRouter(coin, redis) {
       res.locals.tipHeight = t.height;
       res.locals.tipTime = t.time;
     } catch { res.locals.tipHeight = null; res.locals.tipTime = null; }
+    // the market price (price_watch keeps it in Redis; no key = no fresh price)
+    try { res.locals.price = JSON.parse(await redis.get(`${coin.prefix}:price`)) || null; } catch { res.locals.price = null; }
     next();
   });
   const dec = coin.decimals;
@@ -456,19 +458,18 @@ function coinRouter(coin, redis) {
   }));
 
   // mining calculator: expected coins per card and pool from benchmarks and the network per model (last 24h)
-  r.get('/calculator', cached(), wrap(async (req, res) => {
+  // the mining picture shared by the calculator and the market page: network per model (last 24h), the miner's
+  // reward per block, the pools with a known fee, and every benchmarked card's expected coins per day
+  const miningModel = async () => {
     const models = coin.models || [];
-    if (models.length < 1) return fail(res, 404, 'Not available', 'This coin has no mining calculator yet.');
     const K = models.length;
     const WIN = 86400;
-    const [tip, stats, d1, mtrend, priceRaw] = await Promise.all([D.tip(), D.modelStats(WIN, K), D.issuance(WIN),
-      D.modelSeries('30d', K), redis.get(`${coin.prefix}:price`).catch(() => null)]);
+    const [tip, stats, d1] = await Promise.all([D.tip(), D.modelStats(WIN, K), D.issuance(WIN)]);
     const net = CALC.network(models, stats, WIN);
     const reward = Number(rewardAt(tip.height)) / 10 ** dec;
     const project = Math.floor(Number(rewardAt(tip.height)) * 5 / 100) / 10 ** dec;
     const feesPerBlock = d1.blocks ? Number(d1.fees) / 10 ** dec / d1.blocks : 0;
     const minerReward = reward - project + feesPerBlock;
-    // pools from the labels file (fee known) plus solo mining on an own node
     const seen = new Set();
     const pools = [];
     for (const l of Object.values(coin.labelMap)) {
@@ -478,12 +479,45 @@ function coinRouter(coin, redis) {
     }
     pools.sort((a, b) => (a.fee + a.minerFee) - (b.fee + b.minerFee) || a.name.localeCompare(b.name));
     pools.push({ name: 'Solo (own node)', fee: 0, minerFee: 0, verified: true, solo: true, color: '#8b93ad' });
-    const ids = models.map(m => m.id);
-    const cards = CALC.loadBenchmarks(coin.id, ids).map(b => {
+    const cards = CALC.loadBenchmarks(coin.id, models.map(m => m.id)).map(b => {
       const bpd = CALC.blocksPerDay(b.rates, net);
       return { gpu: b.gpu, vendor: b.vendor, miner: b.miner, version: b.version, power: b.power_w, rates: b.rates, date: b.date,
         source: b.source, note: b.note || null, auto: b.auto, blocksPerDay: bpd, grossPerDay: bpd * minerReward };
     }).sort((a, b) => b.grossPerDay - a.grossPerDay);
+    return { models, K, tip, net, reward, project, feesPerBlock, minerReward, pools, cards, d1 };
+  };
+
+  // market: price from the exchange (via the price feed), market cap, what mining earns in dollars
+  r.get('/market', cached(), wrap(async (req, res) => {
+    const range = rangeOf(req);
+    const price = res.locals.price;
+    const [mm, hist, since, act, g, miners] = await Promise.all([miningModel(), D.priceHistory(range), D.priceSince(),
+      D.activity(86400), D.genesis(), D.miners(86400)]);
+    const supply = Number(mm.tip.supply) / 10 ** dec;
+    const maxSupply = Number(BigInt(coin.maxSupply || 0) * 10n ** BigInt(dec) + g.carryover) / 10 ** dec;
+    const earned24 = Number(miners.rows.reduce((t, m) => t + m.earned, 0n)) / 10 ** dec;   // to miners, project share excluded
+    const issued24 = Number(mm.d1.issued) / 10 ** dec;
+    const usd = price ? price.usd : null;
+    const ths = act.hashrate / 1e12;
+    const POWER = 0.30;
+    const sui = mm.pools.find(p => p.name === 'Suprnova') || mm.pools[0];
+    const keep = 1 - (sui.fee + sui.minerFee) / 100;
+    const cards = mm.cards.filter((c, i, a) => a.findIndex(x => x.gpu === c.gpu) === i).slice(0, 8).map(c => {
+      const coins = c.grossPerDay * keep, cost = c.power * 24 / 1000 * POWER;
+      return { ...c, coins, revenue: usd != null ? coins * usd : null, cost, profit: usd != null ? coins * usd - cost : null,
+        breakEven: coins > 0 ? cost / coins : null };
+    });
+    render(res, 'market', `${coin.name} Price and Market – ${price ? '$' + F.num(usd, usd < 1 ? 4 : 2) : 'not traded'}`, {
+      desc: `${coin.name} (${coin.symbol}) price${price ? ' on ' + price.source + ' ' + price.market : ''}, 24h change and volume, market cap, what miners earn per day in dollars, hashprice and GPU mining profit at the current price.`,
+      range, price, hist, since, supply, maxSupply, earned24, issued24, ths, POWER, sui, cards,
+      hashprice: usd != null && ths > 0 ? earned24 * usd / ths : null, minerReward: mm.minerReward });
+  }));
+
+  r.get('/calculator', cached(), wrap(async (req, res) => {
+    if (!(coin.models || []).length) return fail(res, 404, 'Not available', 'This coin has no mining calculator yet.');
+    const [mm, mtrend] = await Promise.all([miningModel(), D.modelSeries('30d', (coin.models || []).length)]);
+    const { models, tip, net, reward, project, feesPerBlock, minerReward, pools, cards } = mm;
+    const priceRaw = res.locals.price ? JSON.stringify(res.locals.price) : null;
     // 30 days of yield for the strongest cards: coins per day per bucket at the network of that bucket
     const trendCards = cards.filter((c, i, a) => a.findIndex(x => x.gpu === c.gpu) === i).slice(0, 4);
     const tcolors = ['#38d5c3', '#f2b84b', '#8e7cf8', '#5aa9ff'];
@@ -661,7 +695,7 @@ async function main() {
   }));
   app.get('/sitemap-pages.xml', (req, res) => res.type('application/xml').set('Cache-Control', 'public, max-age=3600').send(xml(
     '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">' + loc('/', null, 'daily', '0.8') +
-    coins.map(c => loc(c.base + '/', null, 'always', '1.0') + ['blocks', 'activity', 'models', 'mining', 'pools', 'calculator', 'emission', 'richlist', 'network']
+    coins.map(c => loc(c.base + '/', null, 'always', '1.0') + ['blocks', 'activity', 'models', 'mining', 'pools', 'calculator', 'market', 'emission', 'richlist', 'network']
       .map(p => loc(`${c.base}/${p}`, null, 'hourly', '0.8')).join('')).join('') + '</urlset>')));
 
   app.get('/_health', async (req, res) => {

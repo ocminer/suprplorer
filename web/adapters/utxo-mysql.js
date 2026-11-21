@@ -157,6 +157,23 @@ class UtxoMysqlAdapter {
     return Array.from({ length: k }, (_, i) => { const r = rows.find(x => Number(x.slot) === i); return r ? Number(r.n) : 0; });
   }
 
+  // market price history, averaged per bucket (empty until a price source exists)
+  async priceHistory(range = '24h') {
+    const t = await this.tip();
+    let { span, bucket } = RANGES[range] || RANGES['24h'];
+    if (!span) { span = 10 * 365 * 86400; bucket = 6 * 3600; }
+    const rows = await this.q('SELECT FLOOR(fetched_at / ?) * ? bk, AVG(usd) usd, MIN(usd) lo, MAX(usd) hi, MAX(volume_usd) vol, ' +
+      'MAX(fetched_at) last FROM prices WHERE fetched_at > ? GROUP BY bk ORDER BY bk', [bucket, bucket, Math.floor(Date.now() / 1000) - span])
+      .catch(() => []);
+    return { bucket, points: rows.map(r => ({ t: Number(r.bk), usd: Number(r.usd), lo: Number(r.lo), hi: Number(r.hi),
+      vol: r.vol == null ? null : Number(r.vol) })) };
+  }
+
+  async priceSince() {
+    const [r] = await this.q('SELECT MIN(fetched_at) t, COUNT(*) n FROM prices').catch(() => [{}]);
+    return r && r.t ? { since: Number(r.t), readings: Number(r.n) } : null;
+  }
+
   // first height inside a time window (heights are cheaper to filter on than times)
   async heightSince(seconds) {
     const t = await this.tip();

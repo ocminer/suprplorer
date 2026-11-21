@@ -432,6 +432,15 @@ td:has(> .ext) { white-space: nowrap; }
 .netviz svg { width: 100%; height: auto; display: block; }
 .netviz figcaption { color: var(--dim); font-size: 12.5px; margin-top: 4px; }
 .model-hash { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; border-top: 1px solid var(--line-soft); margin: 14px -20px -16px; padding: 12px 20px; font-size: 12.5px; }
+.price-chip { display: inline-flex; align-items: baseline; gap: 6px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.price-chip b { color: var(--text); font-weight: 600; }
+.price-chip .up { color: var(--good); }
+.price-chip .down { color: var(--bad); }
+.price-chip:hover b { color: var(--accent); }
+.stat-aside b.up, .t .pos, td.pos { color: var(--good); }
+.stat-aside b.down, .t .neg, td.neg { color: var(--bad); }
+.range-bar { position: relative; height: 5px; border-radius: 5px; margin-top: 12px; background: linear-gradient(90deg, color-mix(in srgb, var(--bad) 55%, var(--line-soft)), color-mix(in srgb, var(--good) 55%, var(--line-soft))); }
+.range-bar i { position: absolute; top: -4px; width: 3px; height: 13px; border-radius: 2px; background: var(--text); transform: translateX(-50%); }
 @media (max-width: 1440px) {
   .topsearch { width: 200px; }
   .nav a { padding: 0 8px; }
