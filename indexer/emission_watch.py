@@ -8,13 +8,25 @@ Checks
   rate_1h      coins issued in the last hour vs the schedule (60 s blocks)      > EMISSION_1H_MAX
   rate_6h      coins issued in the last 6 hours vs the schedule                  > EMISSION_6H_MAX
   dominance    one miner (pool) found more than POOL_MAX_SHARE of the last POOL_WINDOW blocks
+  fingerprint  a pool's recent blocks do not look like its own: at least FINGERPRINT_MIN blocks of the last
+               POOL_WINDOW blocks of one labelled pool (or a miner with many blocks) break its fingerprint
 
 Alerts go out when a check turns bad and when it recovers; a critical check that stays bad repeats
 every 30 minutes. The status of every check is published in Redis (<prefix>:watch) for the web page.
 
 Environment: MYSQL_HOST MYSQL_USER MYSQL_PASSWORD NEB_DB REDIS_URL REDIS_PREFIX NTFY_URL (optional)
              EMISSION_1H_MAX (1.5) EMISSION_6H_MAX (1.25) POOL_MAX_SHARE (0.51) POOL_WINDOW (360) COIN_NAME
+             FINGERPRINT_MIN (2)
+
+Pool fingerprints: the coinbase witness holds the height (4 bytes) and an extranonce that every pool's
+software fills in its own way (some always start with the same byte, some use only the first few bytes).
+For each block the fingerprint is learned from that miner's previous FP_TRAIN blocks: the longest
+extranonce seen and, when at most two first-byte values cover 99% of them, those values. A block that
+is longer, has another witness size or starts differently breaks it. One stray block happens when a pool
+changes software, so the alert needs FINGERPRINT_MIN of them; it can mean the pool changed its setup or
+that somebody else mines to its payout address.
 """
+import collections
 import json
 import os
 import time
@@ -32,6 +44,9 @@ TARGET = int(E.get("BLOCK_TIME", "60"))
 LIMITS = {"rate_1h": float(E.get("EMISSION_1H_MAX", "1.5")), "rate_6h": float(E.get("EMISSION_6H_MAX", "1.25")),
           "dominance": float(E.get("POOL_MAX_SHARE", "0.51"))}
 POOL_WINDOW = int(E.get("POOL_WINDOW", "360"))
+FP_MIN = int(E.get("FINGERPRINT_MIN", "2"))
+FP_TRAIN, FP_LEARN = 300, 50       # blocks a fingerprint is learned from, and the least it needs
+FP_UNLABELLED = 100                # unlabelled miners get one from this many blocks on
 REPEAT = 1800
 CRITICAL = {"overpay", "supply"}
 
@@ -50,6 +65,53 @@ def notify(title, body, priority, tags):
         urllib.request.urlopen(req, timeout=15).read()
     except OSError as e:
         print(f"ntfy failed: {e}", flush=True)
+
+
+def short(who):
+    return who if len(who) < 30 else who[:12] + "…" + who[-6:]
+
+
+def fingerprint(train):
+    """(witness size, longest extranonce, allowed first bytes or None) from a miner's earlier witnesses."""
+    sizes = collections.Counter(len(w) for w in train)
+    size = sizes.most_common(1)[0][0]
+    tails = [w[4:] for w in train if len(w) == size]
+    first = collections.Counter(t[:1] for t in tails)
+    top = [b for b, _ in first.most_common(2)]
+    lead = set(top) if sum(first[b] for b in top) >= 0.99 * len(tails) else None
+    return size, max(len(t.rstrip(b"\0")) for t in tails), lead
+
+
+def breaks(fp, w):
+    size, longest, lead = fp
+    if len(w) != size:
+        return f"witness of {len(w)} bytes, usually {size}"
+    t = w[4:]
+    if len(t.rstrip(b"\0")) > longest:
+        return f"extranonce uses {len(t.rstrip(b"\0"))} bytes, at most {longest} before"
+    if lead and t[:1] not in lead:
+        return f"extranonce starts {t[:1].hex()}, usually {'/'.join(sorted(b.hex() for b in lead))}"
+    return None
+
+
+def fingerprints(cur):
+    """Blocks of the last POOL_WINDOW that break their miner's fingerprint, per miner."""
+    cur.execute("SELECT b.height, COALESCE(l.label, a.address), l.label IS NOT NULL, b.coinbase_witness FROM blocks b "
+                "JOIN addresses a ON a.id = b.miner_address_id LEFT JOIN labels l ON l.address = a.address "
+                "WHERE b.height > 0 ORDER BY b.height DESC LIMIT %s", (POOL_WINDOW + 20000,))
+    rows = cur.fetchall()[::-1]
+    start = rows[-POOL_WINDOW][0] if len(rows) >= POOL_WINDOW else rows[0][0] if rows else 0
+    hist, bad, watched = collections.defaultdict(list), collections.defaultdict(list), set()
+    for h, who, labelled, w in rows:
+        w = bytes(w)
+        train = hist[who][-FP_TRAIN:]
+        if h >= start and len(train) >= (FP_LEARN if labelled else FP_UNLABELLED):
+            watched.add(who)
+            why = breaks(fingerprint(train), w)
+            if why:
+                bad[who].append((h, why))
+        hist[who].append(w)
+    return bad, watched
 
 
 def run(cur):
@@ -93,10 +155,24 @@ def run(cur):
     window = cur.fetchone()[0] or 1
     share = row[1] / window if row else 0.0
     who = row[0] if row else "-"
-    who_short = who if len(who) < 30 else who[:12] + "…" + who[-6:]
+    who_short = short(who)
     out["dominance"] = {"ok": share <= LIMITS["dominance"], "value": round(share, 4), "limit": LIMITS["dominance"],
                         "who": who, "text": f"Largest miner {who_short}: {share * 100:.1f}% of the last {window} blocks "
                                             f"(alert above {LIMITS['dominance'] * 100:.0f}%)."}
+
+    bad, watched = fingerprints(cur)
+    hits = {who: v for who, v in bad.items() if len(v) >= FP_MIN}
+    if hits:
+        text = "; ".join(f"{short(who)}: {len(v)} of its last blocks differ (#{v[-1][0]}: {v[-1][1]})"
+                         for who, v in sorted(hits.items(), key=lambda kv: -len(kv[1]))) + \
+               ". The pool changed its setup, or somebody else mines to its payout address."
+    else:
+        single = sum(len(v) for v in bad.values())
+        text = (f"{len(watched)} pools and large miners checked over the last {POOL_WINDOW} blocks: all match their "
+                f"fingerprint" + (f" ({single} single stray block)." if single == 1 else
+                                  f" ({single} single stray blocks)." if single else "."))
+    out["fingerprint"] = {"ok": not hits, "value": sum(len(v) for v in hits.values()), "limit": FP_MIN,
+                          "who": sorted(hits), "text": text}
     return tip_h, out
 
 

@@ -9,7 +9,7 @@ block content
   - var r7 = pct(d7.issued, sched7)
   - var supplyPct = pct(tip.supply, cap)
   - var project = rNow * 5n / 100n
-  - var NAMES = { overpay: 'Coinbase within reward and fees', supply: 'Supply within the schedule', rate_1h: 'Issuance, last hour', rate_6h: 'Issuance, last 6 hours', dominance: 'Largest miner' }
+  - var NAMES = { overpay: 'Coinbase within reward and fees', supply: 'Supply within the schedule', rate_1h: 'Issuance, last hour', rate_6h: 'Issuance, last 6 hours', dominance: 'Largest miner', fingerprint: 'Pool fingerprints' }
   .page-head
     h1 Emission
       span.sub Coins issued against the #{coin.name} reward schedule, checked every minute.
@@ -85,4 +85,4 @@ block content
       h2 How #{sym} is issued
     .panel-body.prose
       p Every block pays a fixed reward, #{F.num(Number(rNow) / 10 ** dec, 2)} #{sym} today, plus the fees of its transactions. Five percent of the reward goes to the project's multisig; the rest goes to the miner. The reward halves every #{F.num(coin.halving)} blocks, so issuance follows the number of blocks, not the clock: when hashrate rises faster than the difficulty adjusts, blocks come quicker and more coins are issued per hour until the difficulty catches up.
-      p The watch above compares every block and the last hour and six hours with that schedule, and alerts the explorer operators at once when a coinbase pays more than it may, the supply leaves the schedule, issuance runs far ahead of it, or a single miner finds more than half of the recent blocks.
+      p The watch above compares every block and the last hour and six hours with that schedule, and alerts the explorer operators at once when a coinbase pays more than it may, the supply leaves the schedule, issuance runs far ahead of it, a single miner finds more than half of the recent blocks, or a pool's blocks stop looking like its own (every pool fills the extranonce of the coinbase in its own way; blocks that break that pattern mean the pool changed its setup or somebody else mines to its payout address).

@@ -65,8 +65,14 @@ only `rm` removes them). A cluster takes the label of any labelled member (commo
 
 `indexer/emission_watch.py` runs every minute. It checks every coinbase against reward plus fees, the
 supply against the reward schedule (carry-over included), issuance over the last 1 and 6 hours, and
-the share of the largest miner, publishes the result for the Emission page and sends an alert when a
-check turns bad or recovers.
+the share of the largest miner and the pool fingerprints, publishes the result for the Emission page
+and sends an alert when a check turns bad or recovers.
+
+Pool fingerprints: the coinbase witness carries the height and an extranonce that each pool's software
+fills in its own way (witness size, how many extranonce bytes it uses, often a fixed first byte). The
+fingerprint of every labelled pool, and of unlabelled miners with 100+ blocks, is learned from its
+previous 300 blocks; when `FINGERPRINT_MIN` (2) of the last `POOL_WINDOW` blocks break it, the watch
+alerts: the pool changed its setup, or somebody else mines to its payout address.
 
 ## Mining benchmarks
 
@@ -129,6 +135,7 @@ Everything comes from environment variables; nothing is configured in the reposi
 | `MODEL_HISTORY_URL` | model watch | published model accuracy history to import and verify |
 | `PRICE_URL` | price watch | market price endpoint |
 | `EMISSION_1H_MAX`, `EMISSION_6H_MAX`, `POOL_MAX_SHARE`, `POOL_WINDOW` | emission watch | alert thresholds (defaults 1.5, 1.25, 0.51, 360 blocks) |
+| `FINGERPRINT_MIN` | emission watch | stray blocks of one pool in the window before the fingerprint alert (default 2) |
 
 Run the node, the indexer (`python indexer/indexer.py`) and the web app (`cd web && npm ci && node
 server.js`) behind a reverse proxy that terminates TLS.
