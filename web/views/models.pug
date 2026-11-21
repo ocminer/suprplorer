@@ -1,0 +1,94 @@
+extends layout
+block content
+  .page-head
+    h1 Models
+      span.sub Every #{coin.name} block is mined on a neural network and its shares train it. This is how well the networks have learned.
+
+  if meta
+    .verify(class=meta.status)
+      i(aria-hidden='true')
+      div
+        if meta.status === 'verified'
+          b Accuracy history verified against our node
+          span The NEB project publishes the accuracy of each model on samples it never trained on. At block ##{F.num(meta.tip)} the models in that history have the same weights hash as the models our own node reports.
+        else if meta.status === 'mismatch'
+          b Accuracy history does not match our node
+          span At block ##{F.num(meta.tip)} the published models differ from ours. The figures below are shown as published; treat them with care.
+        else
+          b Accuracy history not checked yet
+          span Our node has not recorded block ##{F.num(meta.tip)} yet; the check repeats every 10 minutes.
+      span.dim.verify-time
+        | Updated
+        |
+        span(data-ts=meta.fetched)= F.ago(meta.fetched)
+
+  .model-grid.section
+    each m in cards
+      section.panel.model-card(style='--c:' + m.color)
+        .model-top
+          span.model-name
+            i.dot(style='--c:' + m.color)
+            = m.name
+          span.dim= m.about
+        if m.last
+          - var d24 = m.dayAgo ? m.last.accuracy - m.dayAgo.accuracy : null
+          .model-stats
+            div
+              .stat-label Accuracy
+              .model-value #{m.last.accuracy.toFixed(1)}
+                span.unit %
+            div
+              .stat-label Since genesis
+              .model-value(class=m.first && m.last.accuracy >= m.first.accuracy ? 'up' : 'down')= m.first ? ((m.last.accuracy - m.first.accuracy >= 0 ? '+' : '−') + Math.abs(m.last.accuracy - m.first.accuracy).toFixed(1) + ' pts') : '–'
+            div
+              .stat-label Last 24h
+              .model-value(class=d24 != null && d24 >= 0 ? 'up' : 'down')= d24 != null ? ((d24 >= 0 ? '+' : '−') + Math.abs(d24).toFixed(1) + ' pts') : '–'
+          .meter(title='Accuracy on samples the model never trained on'): i(style='width:' + m.last.accuracy.toFixed(1) + '%')
+          .stat-sub
+            | #{F.num(m.steps24)} training steps in 24h, started at #{m.first ? m.first.accuracy.toFixed(1) : '–'}%. As of block ##{F.num(m.last.height)}.
+          if m.viz
+            - var v = m.viz
+            figure.netviz
+              svg(viewBox='0 0 ' + v.w + ' ' + v.h, role='img', aria-label=m.name + ' network: ' + v.hidden.length + ' hidden neurons and their links to ' + v.outs.length + ' outputs')
+                each l in v.links
+                  line(x1=l.x1.toFixed(1), y1=l.y1.toFixed(1), x2=l.x2.toFixed(1), y2=l.y2.toFixed(1), stroke=l.pos ? m.color : '#f07178', stroke-opacity=l.op.toFixed(2), stroke-width=l.sw.toFixed(2))
+                each n in v.hidden
+                  circle(cx=n.x.toFixed(1), cy=n.y.toFixed(1), r=n.r.toFixed(1), fill=m.color, fill-opacity=(0.25 + 0.75 * n.v / 255).toFixed(2))
+                each o in v.outs
+                  circle(cx=o.x, cy=o.y, r='9', fill='var(--surface)', stroke=m.color, stroke-width='2')
+                  text(x=o.x + 18, y=o.y + 4, fill='var(--text)', font-size='13')= o.label
+              figcaption
+                | #{v.hidden.length} hidden neurons (brighter = stronger) linked to the outputs:
+                span(style='color:' + m.color)  supports
+                |  or
+                span(style='color:#f07178')  argues against
+                |  that output.
+        else
+          .panel-body.dim No published history for this model yet.
+        if m.state
+          .model-hash
+            span.dim Weights hash at block ##{F.num(m.state.height)}, from our node
+            span.mono= F.short(m.state.weightsHash, 16, 8)
+
+  if accChart.x.length > 1
+    section.panel.chart-card.section
+      +chartHead('Accuracy over time', null, null, 'Share of held-out samples each model classifies correctly, as it trains block by block')
+      .panel-body
+        +chart('mod-acc', accChart.x, null, { format: 'int', unit: '%', step: true, lines: accChart.lines, tall: true })
+      .legend
+        each l in accChart.lines
+          - var lv = l.y.filter(x => x != null).slice(-1)[0]
+          span
+            i.dot(style='--c:' + l.color)
+            | #{l.label}
+            b= lv != null ? lv.toFixed(1) + '%' : '–'
+
+  section.panel.section
+    .panel-head
+      h2 What the models learn
+    .panel-body.prose
+      each m in cards
+        p
+          b= m.name + ': '
+          | #{m.about}. Its outputs are #{(m.labels || []).join(' and ') || 'two classes'}.
+      p A share is a mined attempt that also counts as one training step: the gradient of the attempt is applied to the model, so the more the network mines, the more the models learn. Accuracy is measured by the NEB project on samples kept out of the chain; we check that the models in that history are the models of our own node, and record the weights hash of every block.

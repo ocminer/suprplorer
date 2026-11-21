@@ -70,7 +70,9 @@ section.panel.section
           each b in blocks
             tr
               td.height: a(href=coin.base + '/block/' + b.hash)= F.num(b.height)
-              td.muted: +age(b.time)
+              td.muted
+                +age(b.time)
+                .fin-under: +finality(b.confirmations, { bare: true })
               td.hide-sm: +hash(b.hash, coin.base + '/block/' + b.hash, 8, 6)
               td: +who(b.miner, { a: 8, b: 4 })
               td.num.hide-sm= b.txs

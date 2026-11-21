@@ -93,6 +93,17 @@ value by output age. The Mining page adds a trend projection for hashrate and di
 line through the last 24 hours, extended 24 hours, with a band of 1.64 residual standard deviations
 (`web/lib/forecast.js`).
 
+## Models and finality
+
+`indexer/model_watch.py` (a service) records, for every block, the weights hash of each model our node
+reports (`getmodel`), and every 10 minutes imports the accuracy history the NEB project publishes
+(`MODEL_HISTORY_URL`, default `https://neuralenginebyte.org/model-history.json`). The import is verified:
+the file's hash of all models at its tip (BLAKE3 of `"neb-models"` and the weights hash of every slot)
+must equal the hash computed from our own records for that block. The Models page shows the accuracy
+of each model on held-out samples, its training steps and a diagram of its hidden neurons and output
+links. Blocks show their finality: pending, final at 60 confirmations (deeper than any allowed
+reorganisation) and spendable at 100 (coinbase maturity), and list their training share records.
+
 ## Configuration
 
 Everything comes from environment variables; nothing is configured in the repository.
@@ -105,6 +116,7 @@ Everything comes from environment variables; nothing is configured in the reposi
 | `PORT`, `CANONICAL_ORIGIN` | web | listen port, origin used in canonical URLs and sitemaps |
 | `GA4_ID`, `GOOGLE_SITE_VERIFICATION` | web | optional Google Analytics / Search Console |
 | `NTFY_URL` | emission watch | optional ntfy topic URL for alerts |
+| `MODEL_HISTORY_URL` | model watch | published model accuracy history to import and verify |
 | `EMISSION_1H_MAX`, `EMISSION_6H_MAX`, `POOL_MAX_SHARE`, `POOL_WINDOW` | emission watch | alert thresholds (defaults 1.5, 1.25, 0.51, 360 blocks) |
 
 Run the node, the indexer (`python indexer/indexer.py`) and the web app (`cd web && npm ci && node

@@ -11,6 +11,7 @@ const { loadCoins } = require('./lib/coins');
 const F = require('./lib/format');
 const CALC = require('./lib/calc');
 const FC = require('./lib/forecast');
+const NV = require('./lib/netviz');
 
 const PORT = Number(process.env.PORT || 3100);
 const COINS_DIR = process.env.SUPRPLORER_COINS_DIR || path.join(__dirname, 'coins');
@@ -261,7 +262,8 @@ function coinRouter(coin, redis) {
     if (!b) return notFound(res, 'Block');
     res.locals.canonical = `${SITE.origin}${coin.base}/block/${b.height}`;
     const e = entity(b.miner);
-    render(res, 'block', `${coin.name} Block #${F.num(b.height)}`, { b, txs: await D.blockTxs(b.height), flagsOf,
+    const [btxs, shares] = await Promise.all([D.blockTxs(b.height), b.shares ? D.blockShares(b.height) : []]);
+    render(res, 'block', `${coin.name} Block #${F.num(b.height)}`, { b, txs: btxs, shares, flagsOf,
       desc: `${coin.name} block ${b.height} mined ${F.utc(b.time)}${e ? ' by ' + e.name : ''}: ${b.txs} transactions, ` +
         `reward ${F.amount(b.reward + b.fees, dec, 2, 4)} ${coin.symbol}, difficulty ${F.num(b.difficulty, 2)}. Hash ${b.hash}.` });
   }));
@@ -396,6 +398,32 @@ function coinRouter(coin, redis) {
       desc: `How many ${coin.symbol} are issued per hour and per day, the supply against the reward schedule, the next halving and the live emission watch.`,
       range, tip, series, d1, d7, watch, allowed, rNow, perDay, nextHalving, cap, sched,
       expectedPerHour: Number(rNow) * 3600 / coin.blockTime / 10 ** dec });
+  }));
+
+  // the neural-network models the chain trains: published accuracy (verified against our node), training steps
+  r.get('/models', cached(), wrap(async (req, res) => {
+    const models = coin.models || [];
+    if (!models.length) return fail(res, 404, 'Not available', 'This coin trains no models.');
+    const K = models.length;
+    const [tip, metaRaw, steps24, ...per] = await Promise.all([D.tip(), redis.get(`${coin.prefix}:models`).catch(() => null),
+      D.trainingSteps(86400, K), ...models.map((m, i) => D.modelFrames(i)), ...models.map((m, i) => D.modelState(i))]);
+    const meta = metaRaw ? JSON.parse(metaRaw) : null;
+    const frames = per.slice(0, K), states = per.slice(K);
+    const cards = models.map((m, i) => {
+      const f = frames[i];
+      const last = f[f.length - 1] || null;
+      const dayAgo = f.filter(x => x.time <= tip.time - 86400).pop() || f[0] || null;
+      const labels = meta && meta.labels ? Object.values(meta.labels)[i] : null;
+      return { ...m, slot: i, last, first: f[0] || null, dayAgo, state: states[i], steps24: steps24[i],
+        totalSteps: f.reduce((s, x) => s + x.steps, 0), labels, viz: last ? NV.diagram(last, labels) : null };
+    });
+    // accuracy over time on one shared time axis
+    const xs = [...new Set(frames.flat().map(x => x.time))].sort((a, b) => a - b);
+    const acc = models.map((m, i) => { const by = new Map(frames[i].map(x => [x.time, x.accuracy])); let lastV = null;
+      return { label: m.name, color: m.color, y: xs.map(t => (by.has(t) ? (lastV = by.get(t)) : lastV)) }; });
+    render(res, 'models', `${coin.name} Models – what the mining trains`, {
+      desc: `${coin.name} mining trains neural networks: accuracy of the ${models.map(m => m.name).join(' and ')} models on samples they never saw, training steps per block and the network of each model.`,
+      tip, cards, meta, accChart: { x: xs, lines: acc } });
   }));
 
   // transactions: activity over time, who sends and receives, the largest transfers, how long coins sit still
@@ -633,7 +661,7 @@ async function main() {
   }));
   app.get('/sitemap-pages.xml', (req, res) => res.type('application/xml').set('Cache-Control', 'public, max-age=3600').send(xml(
     '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">' + loc('/', null, 'daily', '0.8') +
-    coins.map(c => loc(c.base + '/', null, 'always', '1.0') + ['blocks', 'activity', 'mining', 'pools', 'calculator', 'emission', 'richlist', 'network']
+    coins.map(c => loc(c.base + '/', null, 'always', '1.0') + ['blocks', 'activity', 'models', 'mining', 'pools', 'calculator', 'emission', 'richlist', 'network']
       .map(p => loc(`${c.base}/${p}`, null, 'hourly', '0.8')).join('')).join('') + '</urlset>')));
 
   app.get('/_health', async (req, res) => {

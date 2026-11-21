@@ -180,3 +180,25 @@ CREATE TABLE IF NOT EXISTS labels (
   source        VARCHAR(8) NOT NULL DEFAULT 'local',  -- 'repo' = labels/<coin>.json (suprplorer-label sync), 'local' = CLI
   updated_at    TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB;
+
+-- Neural-network models per block (indexer/model_watch.py): our node's weights hash per slot and block,
+-- and the accuracy history the NEB project publishes, verified against those hashes.
+CREATE TABLE IF NOT EXISTS model_states (
+  slot          TINYINT UNSIGNED NOT NULL,
+  height        INT UNSIGNED NOT NULL,
+  blockhash     BINARY(32) NOT NULL,
+  weights_hash  BINARY(32) NOT NULL,
+  dataset       VARCHAR(32) NOT NULL,
+  weights       MEDIUMBLOB NULL,             -- packed weights, stored when they changed
+  PRIMARY KEY (slot, height)
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS model_frames (
+  slot          TINYINT UNSIGNED NOT NULL,
+  height        INT UNSIGNED NOT NULL,
+  steps         SMALLINT UNSIGNED NOT NULL,  -- training steps (shares) applied at this block
+  accuracy      DECIMAL(5,1) NOT NULL,       -- percent, on samples the model never trained on
+  neurons       BINARY(32) NOT NULL,         -- hidden neuron summary (0-255)
+  links         VARBINARY(64) NOT NULL,      -- hidden -> output link weights, offset by 16
+  PRIMARY KEY (slot, height)
+) ENGINE=InnoDB;

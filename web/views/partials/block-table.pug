@@ -6,6 +6,8 @@
         th Age
         th Hash
         th Found by
+        th.hide-sm Status
+        th.num.hide-sm(title='Training share records the block lists') Shares
         th.num.hide-sm Txs
         th.num.hide-sm Size
         th.num.hide-sm Difficulty
@@ -17,6 +19,8 @@
           td.muted: +age(b.time)
           td: +hash(b.hash, coin.base + '/block/' + b.hash, 10, 6)
           td: +who(b.miner, { a: 10, b: 4 })
+          td.hide-sm: +finality(b.confirmations, { short: true })
+          td.num.hide-sm= b.shares
           td.num.hide-sm= b.txs
           td.num.hide-sm.muted= F.bytes(b.size)
           td.num.hide-sm.muted= F.num(b.difficulty, 1)

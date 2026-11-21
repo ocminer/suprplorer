@@ -3,6 +3,14 @@ block content
   .page-head
     h1 Blocks
       span.sub #{F.num(tip.height + 1)} blocks since genesis
-  section.panel
+  - var fin = coin.finality || 60, mat = coin.maturity || 100
+  - var nPending = Math.min(tip.height, fin - 1)
+  - var nFinal = Math.max(0, Math.min(tip.height + 1, mat - 1) - nPending)
+  .stats.four
+    +stat('Pending', F.num(nPending), null, 'The newest ' + (fin - 1) + ' blocks: a reorganisation could still replace them')
+    +stat('Final', F.num(nFinal), null, fin + ' confirmations or more: deeper than any allowed reorganisation (' + fin + ' blocks)')
+    +stat('Spendable', F.num(Math.max(0, tip.height + 1 - nPending - nFinal)), null, 'Rewards can be spent after ' + mat + ' confirmations')
+    +stat('Tip', '#' + F.num(tip.height), null, '<span data-ts="' + tip.time + '">' + F.ago(tip.time) + '</span>')
+  section.panel.section
     include partials/block-table
     +pager(pageNo, pages, coin.base + '/blocks')

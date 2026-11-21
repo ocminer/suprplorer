@@ -68,13 +68,13 @@ class UtxoMysqlAdapter {
     const t = await this.tip();
     const since = t.time - seconds;
     const [r] = await this.q('SELECT COUNT(*) blocks, SUM(difficulty) sd, AVG(difficulty) ad, MIN(time) t0, ' +
-      'COUNT(DISTINCT miner_address_id) miners, SUM(tx_count) - COUNT(*) txs, SUM(volume) volume, SUM(fees) fees ' +
+      'COUNT(DISTINCT miner_address_id) miners, SUM(tx_count) - COUNT(*) txs, SUM(volume) volume, SUM(fees) fees, AVG(share_count) shares ' +
       'FROM blocks WHERE time > ? AND height > 0', [since]);
     const blocks = Number(r.blocks);
     const span = Math.max(1, Math.min(seconds, t.time - Number(r.t0 || t.time)));
     return { blocks, miners: Number(r.miners), txs: Number(r.txs || 0n), volume: r.volume || 0n, fees: r.fees || 0n,
       difficulty: Number(r.ad || 0), hashrate: blocks ? (Number(r.sd) * this.w0) / span : 0,
-      blockTime: blocks > 1 ? span / blocks : null };
+      blockTime: blocks > 1 ? span / blocks : null, shares: Number(r.shares || 0) };
   }
 
   // time series for the charts: per bucket blocks, mean difficulty, hashrate, active miners, transfers
@@ -88,12 +88,12 @@ class UtxoMysqlAdapter {
     }
     const since = t.time - span;
     const rows = await this.q('SELECT FLOOR(time / ?) * ? AS b, COUNT(*) n, AVG(difficulty) ad, SUM(difficulty) sd, ' +
-      'COUNT(DISTINCT miner_address_id) miners, SUM(tx_count) - COUNT(*) txs FROM blocks ' +
+      'COUNT(DISTINCT miner_address_id) miners, SUM(tx_count) - COUNT(*) txs, AVG(share_count) shares FROM blocks ' +
       'WHERE time > ? AND height > 0 GROUP BY b ORDER BY b', [bucket, bucket, since]);
     return { range, bucket, points: rows.map(r => {
       const start = Number(r.b);
       const width = Math.max(60, Math.min(bucket, t.time - start)); // the last bucket is still filling
-      return { t: start, blocks: Number(r.n), difficulty: Number(r.ad), miners: Number(r.miners), txs: Number(r.txs),
+      return { t: start, blocks: Number(r.n), difficulty: Number(r.ad), miners: Number(r.miners), txs: Number(r.txs), shares: Number(r.shares),
         hashrate: (Number(r.sd) * this.w0) / width, blockTime: Number(r.n) ? width / Number(r.n) : null };
     }) };
   }
@@ -125,6 +125,36 @@ class UtxoMysqlAdapter {
     const [r] = await this.q('SELECT COUNT(*) n, COALESCE(SUM(coinbase_out - fees), 0) issued, COALESCE(SUM(fees), 0) fees ' +
       'FROM blocks WHERE time > ? AND height > 0', [t.time - seconds]);
     return { blocks: Number(r.n), issued: BigInt(r.issued), fees: BigInt(r.fees) };
+  }
+
+  // the share records a block lists (the training steps it applies)
+  async blockShares(height, limit = 256) {
+    const rows = await this.q('SELECT idx, body_root, time, nonce FROM shares WHERE height=? ORDER BY idx LIMIT ?', [height, limit]);
+    return rows.map(r => ({ idx: Number(r.idx), bodyRoot: hex(r.body_root), time: Number(r.time), nonce: Number(r.nonce) }));
+  }
+
+  // published accuracy history per model slot, with the time of each block (only blocks on our chain)
+  async modelFrames(slot) {
+    const rows = await this.q('SELECT f.height, f.steps, f.accuracy, f.neurons, f.links, b.time FROM model_frames f ' +
+      'JOIN blocks b ON b.height=f.height WHERE f.slot=? ORDER BY f.height', [slot]).catch(() => []);
+    return rows.map(r => ({ height: Number(r.height), time: Number(r.time), steps: Number(r.steps), accuracy: Number(r.accuracy),
+      neurons: [...r.neurons], links: [...r.links].map(v => v - 16) }));
+  }
+
+  // our node's model of a slot at the newest recorded block (still on the main chain)
+  async modelState(slot, height = null) {
+    const rows = await this.q('SELECT m.height, m.weights_hash, m.dataset FROM model_states m JOIN blocks b ON b.height=m.height ' +
+      'AND b.hash=m.blockhash WHERE m.slot=? ' + (height == null ? '' : 'AND m.height<=? ') + 'ORDER BY m.height DESC LIMIT 1',
+      height == null ? [slot] : [slot, height]).catch(() => []);
+    return rows[0] ? { height: Number(rows[0].height), weightsHash: hex(rows[0].weights_hash), dataset: rows[0].dataset } : null;
+  }
+
+  // training steps (shares) per model over a window: block h lists shares that train the slot of h - 1
+  async trainingSteps(seconds, k = 2) {
+    const h0 = await this.heightSince(seconds);
+    const rows = await this.q('SELECT (height + ? - 1) % ? slot, SUM(share_count) n FROM blocks WHERE height >= ? GROUP BY slot',
+      [k, k, h0]);
+    return Array.from({ length: k }, (_, i) => { const r = rows.find(x => Number(x.slot) === i); return r ? Number(r.n) : 0; });
   }
 
   // first height inside a time window (heights are cheaper to filter on than times)
@@ -272,16 +302,18 @@ class UtxoMysqlAdapter {
   // ---------------------------------------------------------------- lists
 
   async blocks(limit = 20, offset = 0) {
+    const tip = await this.tip();
     const rows = await this.q('SELECT b.height, b.hash, b.time, b.tx_count, b.size, b.reward, b.fees, b.difficulty, ' +
       'b.share_count, a.address miner FROM blocks b LEFT JOIN addresses a ON a.id=b.miner_address_id ' +
       'ORDER BY b.height DESC LIMIT ? OFFSET ?', [limit, offset]);
     return rows.map(r => ({ height: Number(r.height), hash: hex(r.hash), time: Number(r.time), txs: Number(r.tx_count),
       size: Number(r.size), reward: BigInt(r.reward) + BigInt(r.fees), difficulty: Number(r.difficulty),
-      shares: Number(r.share_count), miner: r.miner }));
+      shares: Number(r.share_count), miner: r.miner, confirmations: tip.height - Number(r.height) + 1 }));
   }
 
   // blocks found by one payout address
   async blocksByMiner(addr, limit = 50, offset = 0) {
+    const tip = await this.tip();
     const [a] = await this.q('SELECT id FROM addresses WHERE address=?', [addr]);
     if (!a) return { total: 0, rows: [] };
     const [c] = await this.q('SELECT COUNT(*) n FROM blocks WHERE miner_address_id=? AND height > 0', [a.id]);
@@ -289,7 +321,7 @@ class UtxoMysqlAdapter {
       'WHERE miner_address_id=? AND height > 0 ORDER BY height DESC LIMIT ? OFFSET ?', [a.id, limit, offset]);
     return { total: Number(c.n), rows: rows.map(r => ({ height: Number(r.height), hash: hex(r.hash), time: Number(r.time),
       txs: Number(r.tx_count), size: Number(r.size), reward: BigInt(r.reward) + BigInt(r.fees), difficulty: Number(r.difficulty),
-      shares: Number(r.share_count), miner: addr })) };
+      shares: Number(r.share_count), miner: addr, confirmations: tip.height - Number(r.height) + 1 })) };
   }
 
   // blocks per bucket per miner address (for the pool share chart)

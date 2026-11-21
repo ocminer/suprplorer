@@ -111,6 +111,12 @@ block content
       .panel-body
         +chart('m-miners', X, series.points.map(p => p.miners), { format: 'int', zero: true, color: '#f2b84b' })
       +chartFoot(series.points.map(p => p.miners), v => F.num(v))
+  section.panel.chart-card.section
+    - var avgShares = act.shares || 0
+    +chartHead('Training shares per block', F.num(avgShares, 1), null, 'Average share records listed per block, ' + bucketLabel.toLowerCase() + '. Each share applies one training step to the model.')
+    .panel-body
+      +chart('m-shares', X, series.points.map(p => p.shares), { format: 'int', zero: true, color: '#c58af9' })
+    +chartFoot(series.points.map(p => p.shares), v => F.num(v, 1))
   section.panel.section
     .panel-head
       h2 Top miners

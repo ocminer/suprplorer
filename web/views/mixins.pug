@@ -121,3 +121,21 @@ mixin searchIcon
   svg(viewBox='0 0 20 20', fill='none', stroke='currentColor', stroke-width='1.8', aria-hidden='true')
     circle(cx='9', cy='9', r='6')
     path(d='M14 14l4 4', stroke-linecap='round')
+
+//- finality of a block: pending until it is deeper than any allowed reorganisation, then final; its
+//- coinbase becomes spendable at the coinbase maturity
+mixin finality(conf, opts)
+  - opts = opts || {}
+  - var fin = coin.finality || 60, mat = coin.maturity || 100
+  - var st = conf >= mat ? 'spendable' : conf >= fin ? 'final' : 'pending'
+  - var label = st === 'pending' ? 'Pending' : st === 'final' ? 'Final' : 'Spendable'
+  - var hint = st === 'pending' ? 'final in ' + (fin - conf) : st === 'final' ? 'spendable in ' + (mat - conf) : ''
+  span.fin(class=st, title=label + ': ' + conf + ' of ' + mat + ' confirmations' + (hint ? ', ' + hint : '') + '. Final at ' + fin + ' (no reorganisation can go deeper), reward spendable at ' + mat + '.')
+    span.fin-bar
+      i(style='width:' + Math.min(100, 100 * conf / mat).toFixed(0) + '%')
+      b(style='left:' + (100 * fin / mat).toFixed(0) + '%')
+    if !opts.bare
+      span.fin-text
+        = label
+        if hint && !opts.short
+          span.dim  #{hint}

@@ -19,7 +19,8 @@ block content
           +who(b.miner, { a: 12, b: 6 })
     +stat('Reward', F.amount(b.reward + b.fees, coin.decimals, 2, 4), coin.symbol, 'Fees ' + F.amount(b.fees, coin.decimals, 0) + ' ' + coin.symbol)
     +stat('Transactions', F.num(b.txs), null, F.bytes(b.size))
-    +stat('Confirmations', F.num(b.confirmations), null, '<span title="' + F.utc(b.time) + '">' + F.utc(b.time) + '</span>')
+    +stat('Confirmations', F.num(b.confirmations), null)
+      .stat-fin: +finality(b.confirmations)
   section.panel.section
     .panel-head
       h2 Details
@@ -29,7 +30,12 @@ block content
       dt Difficulty
       dd= F.num(b.difficulty, 4)
       dt Training shares listed
-      dd= F.num(b.shares)
+      dd
+        = F.num(b.shares)
+        if b.shares
+          a.dim(href='#shares', style='margin-left:8px') see below
+      dt Mined on model
+      dd #{(coin.models && coin.models.length) ? coin.models[b.height % coin.models.length].name + ' (slot ' + (b.height % coin.models.length) + ')' : '–'}
       dt Supply after this block
       dd: +amount(b.supply)
       if b.destroyed > 0
@@ -79,3 +85,24 @@ block content
           +amount(t.totalOut)
           if !t.coinbase
             .dim(style='font-size:12.5px') Fee #{F.amount(t.fee, coin.decimals, 0)}
+  if shares && shares.length
+    section.panel.section#shares
+      .panel-head
+        div
+          h2 Training shares
+          .note Each share is a mined attempt that applies one training step to the #{coin.models && coin.models.length ? coin.models[(b.height - 1 + coin.models.length) % coin.models.length].name : ''} model of the parent round; the block lists #{F.num(b.shares)}#{b.shares > shares.length ? ', ' + shares.length + ' shown' : ''}.
+      .table-scroll
+        table.t
+          thead
+            tr
+              th #
+              th Nonce
+              th Body root
+              th.num Time
+          tbody
+            each sh in shares
+              tr
+                td.rank= sh.idx + 1
+                td.mono= sh.nonce
+                td.mono.dim= F.short(sh.bodyRoot, 16, 8)
+                td.num.dim= F.utc(sh.time)
