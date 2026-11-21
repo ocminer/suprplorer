@@ -484,13 +484,14 @@ function coinRouter(coin, redis) {
     const cards = CALC.loadBenchmarks(coin.id, models.map(m => m.id)).map(b => {
       const bpd = CALC.blocksPerDay(b.rates, net);
       return { gpu: b.gpu, vendor: b.vendor, miner: b.miner, version: b.version, power: b.power_w, rates: b.rates, date: b.date,
-        source: b.source, note: b.note || null, auto: b.auto, blocksPerDay: bpd, grossPerDay: bpd * minerReward };
+        source: b.source, note: b.note || null, auto: b.auto, upcoming: !!b.upcoming, blocksPerDay: bpd, grossPerDay: bpd * minerReward };
     }).sort((a, b) => b.grossPerDay - a.grossPerDay);
     const vk = v => String(v).split('.').map(Number);
     const newer = (a, b) => { const x = vk(a), y = vk(b); for (let i = 0; i < 3; i++) if (x[i] !== y[i]) return x[i] > y[i]; return false; };
+    // the newest suprminer release the cards were measured with (a build not released yet links to the releases)
     const latest = cards.filter(c => c.miner === 'suprminer').reduce((a, c) => (!a || newer(c.version, a.version) ? c : a), null);
-    const minerRelease = latest ? { miner: 'suprminer', version: latest.version,
-      url: `https://github.com/ocminer/suprminer/releases/tag/v${latest.version}` } : null;
+    const minerRelease = latest ? { miner: 'suprminer', version: latest.version, upcoming: latest.upcoming,
+      url: latest.upcoming ? 'https://github.com/ocminer/suprminer/releases' : `https://github.com/ocminer/suprminer/releases/tag/v${latest.version}` } : null;
     return { models, K, tip, net, reward, project, feesPerBlock, minerReward, pools, cards, d1, minerRelease, netWindow: WIN };
   };
 

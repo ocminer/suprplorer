@@ -5,6 +5,62 @@
   "benchmarks": [
     {
       "miner": "suprminer",
+      "version": "1.9.51",
+      "gpu": "RTX PRO 6000 (96 GB)",
+      "vendor": "nvidia",
+      "power_w": 600,
+      "rates": {
+        "kepler": 917000000,
+        "tess": 5900000000
+      },
+      "date": "2026-11-21",
+      "source": "https://github.com/ocminer/suprminer/releases",
+      "note": "Upcoming release 1.9.51, measured on the models of 21 November 2026."
+    },
+    {
+      "miner": "suprminer",
+      "version": "1.9.51",
+      "gpu": "RTX 5090",
+      "vendor": "nvidia",
+      "power_w": 600,
+      "rates": {
+        "kepler": 795000000,
+        "tess": 4510000000
+      },
+      "date": "2026-11-21",
+      "source": "https://github.com/ocminer/suprminer/releases",
+      "note": "Upcoming release 1.9.51, measured on the models of 21 November 2026."
+    },
+    {
+      "miner": "suprminer",
+      "version": "1.9.51",
+      "gpu": "H100 (80 GB)",
+      "vendor": "nvidia",
+      "power_w": 590,
+      "rates": {
+        "kepler": 533000000,
+        "tess": 3680000000
+      },
+      "date": "2026-11-21",
+      "source": "https://github.com/ocminer/suprminer/releases",
+      "note": "Upcoming release 1.9.51, measured on the models of 21 November 2026."
+    },
+    {
+      "miner": "suprminer",
+      "version": "1.9.51",
+      "gpu": "CMP 170HX (unlocked)",
+      "vendor": "nvidia",
+      "power_w": 250,
+      "rates": {
+        "kepler": 183000000,
+        "tess": 1290000000
+      },
+      "date": "2026-11-21",
+      "source": "https://github.com/ocminer/suprminer/releases",
+      "note": "Upcoming release 1.9.51, measured on the models of 21 November 2026."
+    },
+    {
+      "miner": "suprminer",
       "version": "1.9.50",
       "gpu": "RTX 5090",
       "vendor": "nvidia",

@@ -85,11 +85,13 @@ block content
                 b= c.gpu
                 .dim(style='font-size:12.5px')
                   | #{c.power} W, #{c.miner} #{c.version}
-                  if c.note
+                  if c.upcoming
+                    span.unverified(title=c.note || 'Not released yet')  (upcoming)
+                  else if c.note
                     span.unverified(title=c.note)  *
                   |
                   |
-                  a.ext(href=c.source, rel='noopener nofollow ugc', target='_blank', title='Release notes of ' + c.miner + ' ' + c.version + ', measured ' + c.date) ↗
+                  a.ext(href=c.source, rel='noopener nofollow ugc', target='_blank', title=(c.upcoming ? c.miner + ' releases (' + c.version + ' not released yet)' : 'Release notes of ' + c.miner + ' ' + c.version) + ', measured ' + c.date) ↗
               each m in coin.models
                 td.num= rate(c.rates[m.id])
               td.num: b(data-f='day')= fmtC(day)
@@ -100,15 +102,13 @@ block content
               td.num.hide-sm(data-f='solo')= c.blocksPerDay > 0 ? F.duration(86400 / c.blocksPerDay) : '–'
     .table-note
       | Break-even: the #{sym} price at which a day of coins pays a day of electricity.
-      if cards.some(c => c.note)
+      if cards.some(c => c.note && !c.upcoming)
         |  * Older miner release; current versions are faster.
+      if cards.some(c => c.upcoming)
+        |  Upcoming: measured with a suprminer build that is not released yet.
       |  Rates come from the miners' published benchmarks, measured on two fixed models; on the live network a card's rate moves from block to block, so treat the yield as an estimate.
       if minerRelease
-        |  Hashrates of
-        |
-        a(href=minerRelease.url, rel='noopener', target='_blank') #{minerRelease.miner} #{minerRelease.version}
-        |
-        | , the latest release with benchmarks (imported every day).
+        |  Hashrates of #[a(href=minerRelease.url, rel='noopener', target='_blank') #{minerRelease.miner} #{minerRelease.version}]#{minerRelease.upcoming ? ', an upcoming release; rates of released versions are imported every day.' : ', the latest release with benchmarks (imported every day).'}
 
   section.panel.section
     .panel-head

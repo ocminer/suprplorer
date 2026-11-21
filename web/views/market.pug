@@ -62,12 +62,10 @@ block content
         div
           h2 GPU mining at #{usdF(usd)}
           .note
-            | On #{sui.name} (#{sui.fee + sui.minerFee}% fees) at $#{POWER.toFixed(2)}/kWh, network of the last 3 hours
             if minerRelease
-              | , hashrates of
-              |
-              a(href=minerRelease.url, rel='noopener', target='_blank') #{minerRelease.miner} #{minerRelease.version}
-            | . Other pools, power prices and card counts on the calculator.
+              | On #{sui.name} (#{sui.fee + sui.minerFee}% fees) at $#{POWER.toFixed(2)}/kWh, network of the last 3 hours, hashrates of #[a(href=minerRelease.url, rel='noopener', target='_blank') #{minerRelease.miner} #{minerRelease.version}]#{minerRelease.upcoming ? ' (upcoming)' : ''}. Other pools, power prices and card counts on the calculator.
+            else
+              | On #{sui.name} (#{sui.fee + sui.minerFee}% fees) at $#{POWER.toFixed(2)}/kWh, network of the last 3 hours. Other pools, power prices and card counts on the calculator.
         a.aside(href=coin.base + '/calculator') Open the calculator
       .table-scroll
         table.t

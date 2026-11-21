@@ -3,8 +3,9 @@
 const fs = require('fs');
 const path = require('path');
 
-// repository file first, then automatic imports; for the same miner, card and power the newer version wins,
-// and on the same version the repository file wins (it is reviewed)
+// repository file first, then automatic imports; for the same miner and card the newer version wins, and on
+// the same version the repository file wins (it is reviewed). A card is matched by its family, so a newer
+// measurement named "H100 (80 GB)" replaces an older "H100 80GB HBM3" at another power allowance.
 const DIRS = (process.env.SUPRPLORER_BENCHMARK_DIRS || '/opt/suprplorer/benchmarks:/var/lib/suprplorer/benchmarks')
   .split(':').filter(Boolean);
 const cache = new Map();
@@ -22,6 +23,9 @@ function readJson(file) {
   }
 }
 
+const NOISE = /^(\d+\s?gb|hbm\d*e?|sxm\d*|pcie|blackwell|server|workstation|edition)$/i;
+const family = gpu => String(gpu).replace(/\([^)]*\)/g, ' ').split(/\s+/).filter(w => w && !NOISE.test(w)).join(' ').toLowerCase();
+
 const vkey = v => String(v).split(/[.+_-]/).map(x => (/^\d+$/.test(x) ? x.padStart(6, '0') : x)).join('.');
 
 function loadBenchmarks(coinId, models) {
@@ -34,10 +38,11 @@ function loadBenchmarks(coinId, models) {
       if (!doc || doc.coin !== coinId || !Array.isArray(doc.benchmarks)) continue;
       for (const b of doc.benchmarks) {
         if (!b || !b.rates || !models.every(m => Number(b.rates[m]) > 0)) continue;
-        const key = `${b.miner}|${b.gpu}|${b.power_w}`;
+        const key = `${b.miner}|${family(b.gpu)}`;
         const cur = best.get(key);
         const better = !cur || vkey(b.version) > vkey(cur.version) || (vkey(b.version) === vkey(cur.version) && rank < cur.rank);
-        if (better) best.set(key, { ...b, rank, auto: rank > 0 });
+        // a source that is no release page (a measurement of a build not released yet)
+        if (better) best.set(key, { ...b, rank, auto: rank > 0, upcoming: !/\/releases\/tag\//.test(b.source || '') && /\/releases\/?$/.test(b.source || '') });
       }
     }
   });
@@ -58,4 +63,4 @@ function blocksPerDay(rates, net) {
   return net.reduce((sum, n) => sum + (n.hashrate > 0 ? n.blocksPerDay * (rates[n.id] || 0) / n.hashrate : 0), 0);
 }
 
-module.exports = { loadBenchmarks, network, blocksPerDay };
+module.exports = { family, loadBenchmarks, network, blocksPerDay };
