@@ -529,8 +529,18 @@ function coinRouter(coin, redis) {
 
   r.get('/calculator', cached(), wrap(async (req, res) => {
     if (!(coin.models || []).length) return fail(res, 404, 'Not available', 'This coin has no mining calculator yet.');
-    const [mm, mtrend] = await Promise.all([miningModel(), D.modelSeries('7d', (coin.models || []).length)]);
+    // the network measured over each window the page can switch to (the default is miningModel's 3 hours)
+    const WINDOWS = [['1h', 3600], ['3h', 3 * 3600], ['6h', 6 * 3600], ['12h', 12 * 3600], ['24h', 86400]];
+    const K = (coin.models || []).length;
+    const [mm, mtrend, ...wstats] = await Promise.all([miningModel(), D.modelSeries('7d', K),
+      ...WINDOWS.map(([, secs]) => D.modelStats(secs, K))]);
     const { models, tip, net, reward, project, feesPerBlock, minerReward, pools, cards, minerRelease } = mm;
+    const windows = WINDOWS.map(([id, secs], wi) => {
+      const wn = CALC.network(models, wstats[wi], secs);
+      return { id, secs, net: wn.map(n => ({ hashrate: n.hashrate, blocksPerDay: n.blocksPerDay, blockTime: n.blockTime })),
+        parts: cards.map(c => CALC.parts(c.rates, wn)) };
+    });
+    const defWindow = WINDOWS.findIndex(([, secs]) => secs === mm.netWindow);
     const priceRaw = res.locals.price ? JSON.stringify(res.locals.price) : null;
     // yield of the strongest cards over the last 24 hours, the window the trend is fitted on (2-hour windows,
     // each at the network of its window),
@@ -564,9 +574,12 @@ function coinRouter(coin, redis) {
     render(res, 'calculator', `${coin.name} Mining Calculator – coins per GPU, pool fees and power cost`, {
       desc: `${coin.name} mining calculator: expected ${coin.symbol} per day for every benchmarked GPU on each pool, after fees, with power cost and break-even price, from the live network hashrate of each model.`,
       tip, net, cards, pools, minerReward, reward, project, feesPerBlock, trend, price, defaultPower: 0.30, minerRelease, trendDays: TREND_DAYS,
+      windows, defWindow, trendIdx: trendCards.map(c => cards.indexOf(c)),
       calcData: { models: models.map(m => ({ id: m.id, name: m.name })), net: net.map(n => ({ id: n.id, hashrate: n.hashrate, blocksPerDay: n.blocksPerDay, growth: n.growth })),
         minerReward, pools: pools.map(p => ({ name: p.name, fee: p.fee, minerFee: p.minerFee })), price: price && price.usd ? price.usd : null,
-        cards: cards.map(c => ({ gpu: c.gpu, power: c.power, blocksPerDay: c.blocksPerDay, parts: c.parts })) } });
+        cards: cards.map(c => ({ gpu: c.gpu, power: c.power, blocksPerDay: c.blocksPerDay, parts: c.parts })),
+        windows, defWindow, trendDays: TREND_DAYS,
+        chart: { id: 'c-trend', hist: hist.length, ahead, cards: trendCards.map(c => cards.indexOf(c)) } } });
   }));
 
   r.get('/richlist', cached(), wrap(async (req, res) => {

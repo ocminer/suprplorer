@@ -152,6 +152,7 @@
       }
     };
     var u = new uPlot(opts, data, host);
+    (window.suprCharts = window.suprCharts || {})[cfg.target] = { u: u, cfg: cfg };
     u.over.appendChild(tip);
     u.over.addEventListener('mouseleave', function () { tip.hidden = true; });
     new ResizeObserver(function () { u.setSize({ width: host.clientWidth, height: host.clientHeight }); }).observe(host);
@@ -218,16 +219,65 @@
     var sig = function (v) { return '$' + (v >= 1 ? v.toFixed(2) : v.toPrecision(3)); };
     var get = function (n) { var x = parseFloat(form.elements[n].value); return isFinite(x) && x >= 0 ? x : null; };
     var setF = function (root, f, txt) { var el = root.querySelector('[data-f="' + f + '"]'); if (el) el.textContent = txt; };
+    var sum = function (a) { return a.reduce(function (s, v) { return s + v; }, 0); };
+    var hr = function (h) {
+      var u = [['H/s', 1], ['kH/s', 1e3], ['MH/s', 1e6], ['GH/s', 1e9], ['TH/s', 1e12], ['PH/s', 1e15]], x = u[0];
+      for (var i = 0; i < u.length; i++) if (h >= u[i][1]) x = u[i];
+      var v = h / x[1];
+      return [v >= 100 ? v.toFixed(0) : v >= 10 ? v.toFixed(1) : v.toFixed(2), x[0]];
+    };
+    var dur = function (s) { return s == null ? '–' : s < 90 ? Math.round(s) + 's' : s < 5400 ? Math.round(s / 60) + 'm' : (s / 3600).toFixed(1) + 'h'; };
+    var still = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    // the network window: 1h ... 24h, switched by the buttons
+    var W = D.windows ? D.defWindow : -1;
+    var winWords = function (w) { var h = w.secs / 3600; return h === 1 ? 'hour' : h + ' hours'; };
+    var partsOf = function (i) { return W >= 0 ? D.windows[W].parts[i] : D.cards[i].parts || []; };
+    // redraw the yield chart: today's point and the dashed trend move with the window (a short tween)
+    var tween = null;
+    var redrawChart = function () {
+      var ch = window.suprCharts && D.chart && window.suprCharts[D.chart.id];
+      if (!ch) return;
+      var cfg = ch.cfg, h = D.chart.hist, n = D.chart.cards.length;
+      var to = [cfg.x];
+      D.chart.cards.forEach(function (ci) {
+        var y = cfg.lines[to.length - 1].y.slice();
+        y[h] = sum(partsOf(ci)) * D.minerReward;
+        to.push(y);
+      });
+      D.chart.cards.forEach(function (ci, j) {
+        var parts = partsOf(ci), y = cfg.lines[n + j].y.slice();
+        var at = function (t) { return sum(parts.map(function (b, k) { return b / (1 + Math.max(0, D.net[k].growth || 0) * t / 86400); })) * D.minerReward; };
+        y[h] = at(0);
+        D.chart.ahead.forEach(function (t, a) { y[h + 1 + a] = at(t); });
+        to.push(y);
+        var leg = document.querySelector('[data-leg="' + j + '"]');
+        if (leg) { setF(leg, 'now', coinsFmt(at(0))); setF(leg, 'end', coinsFmt(at(D.trendDays * 86400))); }
+      });
+      var from = ch.u.data.map(function (a) { return a.slice(); });
+      if (tween) cancelAnimationFrame(tween);
+      if (still) { ch.u.setData(to); return; }
+      var t0 = null;
+      var step = function (ts) {
+        if (t0 == null) t0 = ts;
+        var p = Math.min(1, (ts - t0) / 320), e = 1 - Math.pow(1 - p, 3);
+        ch.u.setData(to.map(function (arr, k) {
+          return k === 0 ? arr : arr.map(function (v, i) { var f = from[k][i]; return v == null || f == null ? v : f + (v - f) * e; });
+        }));
+        tween = p < 1 ? requestAnimationFrame(step) : null;
+      };
+      tween = requestAnimationFrame(step);
+    };
     var update = function () {
       var pool = D.pools[+form.elements.pool.value] || D.pools[0];
       var keep = 1 - (pool.fee + pool.minerFee) / 100;
       var power = get('power') || 0, price = get('price'), count = Math.max(1, Math.round(get('count') || 1));
-      var days = D.cards.map(function (c) { return c.blocksPerDay * D.minerReward * keep * count; });
+      var bpd = D.cards.map(function (c, i) { return W >= 0 ? sum(partsOf(i)) : c.blocksPerDay; });
+      var days = bpd.map(function (b) { return b * D.minerReward * keep * count; });
       // average over the chosen period if each model's network keeps its linear trend (never above today)
       var tdays = +form.elements.trend.value || 7;
       var factor = D.net.map(function (n) { var x = Math.max(0, n.growth || 0) * tdays; return x > 1e-9 ? Math.log1p(x) / x : 1; });
-      var trends = D.cards.map(function (c) {
-        return (c.parts || []).reduce(function (s, b, k) { return s + b * factor[k]; }, 0) * D.minerReward * keep * count;
+      var trends = D.cards.map(function (c, i) {
+        return partsOf(i).reduce(function (s, b, k) { return s + b * factor[k]; }, 0) * D.minerReward * keep * count;
       });
       var max = Math.max.apply(null, days.concat([1e-12]));
       D.cards.forEach(function (c, i) {
@@ -240,7 +290,7 @@
           setF(row, 'kwh', coinsFmt(kwh ? day / kwh : 0));
           setF(row, 'cost', usd(cost));
           setF(row, 'be', day > 0 ? sig(cost / day) : '–');
-          var solo = c.blocksPerDay > 0 ? 86400 / (c.blocksPerDay * count) : 0;
+          var solo = bpd[i] > 0 ? 86400 / (bpd[i] * count) : 0;
           setF(row, 'solo', !solo ? '–' : solo < 3600 ? Math.round(solo / 60) + 'm' : solo < 172800 ? (solo / 3600).toFixed(1) + 'h' : (solo / 86400).toFixed(1) + 'd');
           var p = row.querySelector('[data-f="profit"]');
           if (p) {
@@ -255,10 +305,36 @@
       if (ph) ph.hidden = price == null;
       var note = document.querySelector('.calc-pool-note');
       if (note) note.textContent = 'On ' + pool.name + ', after ' + (pool.fee + pool.minerFee) + '% fees, ' +
-        (count > 1 ? count + ' cards, ' : '') + 'network of the last 3 hours';
+        (count > 1 ? count + ' cards, ' : '') + 'network of the last ' + (W >= 0 ? winWords(D.windows[W]) : '3 hours');
+      if (W >= 0) {
+        // network stats of the window
+        D.windows[W].net.forEach(function (n, k) {
+          var el = document.querySelector('[data-net="' + k + '"]');
+          if (!el) return;
+          var h = hr(n.hashrate);
+          setF(el, 'nv', h[0]); setF(el, 'nu', h[1]);
+          setF(el, 'ns', Math.round(n.blocksPerDay).toLocaleString('en-US') + ' blocks a day, ' + dur(n.blockTime) + ' each');
+        });
+        // card x pool matrix (one card, before the card count)
+        document.querySelectorAll('tr[data-ci]').forEach(function (tr) {
+          var b = bpd[+tr.getAttribute('data-ci')];
+          tr.querySelectorAll('[data-pool]').forEach(function (td) {
+            var p = D.pools[+td.getAttribute('data-pool')];
+            td.textContent = coinsFmt(b * D.minerReward * (1 - (p.fee + p.minerFee) / 100));
+          });
+        });
+      }
       var tl = document.querySelector('.calc-trend-label');
       if (tl) tl.textContent = 'Average of the next ' + (tdays === 1 ? '24 hours' : tdays + ' days') + ' on the network trend';
     };
+    document.querySelectorAll('[data-win]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        W = +b.getAttribute('data-win');
+        document.querySelectorAll('[data-win]').forEach(function (x) { x.setAttribute('aria-pressed', x === b ? 'true' : 'false'); });
+        update();
+        redrawChart();
+      });
+    });
     form.addEventListener('input', update);
     form.addEventListener('change', update);
     update();

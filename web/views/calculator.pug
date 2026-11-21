@@ -42,11 +42,24 @@ block content
         option(value='7', selected) Next 7 days
         option(value='30') Next 30 days
 
+  .calc-window.section
+    span#calc-win-label Network measured over the last
+    nav.seg(role='group', aria-labelledby='calc-win-label')
+      each w, wi in windows
+        button(type='button', data-win=wi, aria-pressed=(wi === defWindow ? 'true' : 'false'))= w.id
+    span.dim.calc-win-hint Short windows react fast but swing with luck; long ones are steady but lag a growing network.
+
   .stats.four.section
-    each n in net
+    each n, k in net
       - var h = F.hashrate(n.hashrate)
-      - var nsub = F.num(n.blocksPerDay, 0) + ' blocks a day, ' + (n.blockTime ? F.duration(n.blockTime) : '–') + ' each; trend ' + pct(n.growth) + ' a day'
-      +stat(n.name + ' network', h.value, h.unit, nsub)
+      .stat(data-net=k)
+        .stat-label #{n.name} network
+        .stat-value
+          span(data-f='nv')= h.value
+          span.unit(data-f='nu')= h.unit
+        .stat-sub
+          span(data-f='ns')= F.num(n.blocksPerDay, 0) + ' blocks a day, ' + (n.blockTime ? F.duration(n.blockTime) : '–') + ' each'
+          | ; trend #{pct(n.growth)} a day
     +stat('Miner reward', F.num(minerReward, 2), sym, 'Per block: ' + F.num(reward - project, 2) + ' reward after the 5% project share, ' + F.num(feesPerBlock, 4) + ' average fees')
     +stat('Market price', price && price.usd ? '$' + price.usd : '–', null, price && price.usd ? (price.sources || []).join(', ') + ', see Market' : sym + ' is not traded yet. Enter a price to see profit.')
 
@@ -75,7 +88,7 @@ block content
             span.track.ghost: i(data-f='tbar', style='width:' + (maxDay ? (100 * tday / maxDay).toFixed(1) : 0) + '%')
           span.v
             b(data-f='day')= fmtC(day)
-            small(data-f='trend', title='On the network trend')= fmtC(tday)
+            small(title='Average a day over the chosen period on the network trend') trend #[span(data-f='trend')= fmtC(tday)]
 
   section.panel.section
     .panel-head
@@ -151,10 +164,10 @@ block content
                 .dim(style='font-size:12px; font-weight:400') #{p.fee + p.minerFee}%#{p.verified ? '' : '*'}
         tbody
           each c in cards.filter((x, i, a) => a.findIndex(y => y.gpu === x.gpu) === i)
-            tr
+            tr(data-ci=cards.indexOf(c))
               td: b= c.gpu
-              each p in pools
-                td.num= fmtC(c.grossPerDay * (1 - (p.fee + p.minerFee) / 100))
+              each p, pi in pools
+                td.num(data-pool=pi)= fmtC(c.grossPerDay * (1 - (p.fee + p.minerFee) / 100))
     .table-note * No public fee page; the fee was confirmed to us directly. Pools can publish their fee in the labels file on GitHub.
 
   if trend.lines.length && trend.x.length > 1
@@ -163,17 +176,18 @@ block content
       .panel-body
         +chart('c-trend', trend.x, null, { format: 'coins', unit: sym + '/day', zero: true, lines: trend.lines, tall: true })
       .legend
-        each l in trend.lines.filter(x => !x.dash)
-          span
+        each l, li in trend.lines.filter(x => !x.dash)
+          span(data-leg=li)
             i.dot(style='--c:' + l.color)
             | #{l.label}
-            b= fmtC(l.now)
-            span.dim  → #{fmtC(l.end)} in #{trendDays} days
+            b(data-f='now')= fmtC(l.now)
+            span.dim
+              |  → #[span(data-f='end')= fmtC(l.end)] in #{trendDays} days
 
   section.panel.section
     .panel-head
       h2 How the calculator works
     .panel-body.prose
-      p #{coin.name} alternates its models by block height, and a card runs at a very different speed on each, so a single hashrate number would mislead. For every model the calculator takes the network hashrate and the number of blocks a day from the last 3 hours (the hashrate climbs fast, so a day average would overstate today's yield), and the card's own rate on that model. The card's expected blocks a day on a model are that model's blocks a day times the card's share of that model's hashrate; the sum over the models, times the miner reward of #{F.num(minerReward, 2)} #{sym}, is the yield.
+      p #{coin.name} alternates its models by block height, and a card runs at a very different speed on each, so a single hashrate number would mislead. For every model the calculator takes the network hashrate and the number of blocks a day over the window you choose (3 hours by default: the hashrate climbs fast, so a day average overstates today's yield, while an hour swings with luck), and the card's own rate on that model. The card's expected blocks a day on a model are that model's blocks a day times the card's share of that model's hashrate; the sum over the models, times the miner reward of #{F.num(minerReward, 2)} #{sym}, is the yield.
       p These are expectations: on a pool the payouts follow them closely, solo the time between blocks varies a lot.
       p The network keeps growing, so today's figure only holds for today. The grey figures assume that each model's network hashrate keeps growing in a straight line at the pace of the last 24 hours (now #{net.map(n => n.name + ' ' + pct(n.growth)).join(', ')} of today's hashrate a day) and give the average yield a day over the chosen period: a card's share of the network falls as the network grows. A straight line, not compound growth, and a shrinking network is not assumed, so the grey figure is never above today's. It is a projection of the recent trend, not a forecast of what miners will do.

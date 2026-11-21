@@ -268,6 +268,14 @@ a.tag:hover { color: white; border-color: var(--c); }
 .seg a { padding: 6px 14px; border-radius: 7px; font-size: 14px; color: var(--muted); }
 .seg a:hover { color: var(--text); }
 .seg a[aria-current="true"] { background: color-mix(in srgb, var(--accent) 16%, transparent); color: var(--accent); font-weight: 550; }
+.seg button { padding: 6px 14px; border-radius: 7px; font: inherit; font-size: 14px; color: var(--muted); background: none; border: 0; cursor: pointer; }
+.seg button:hover { color: var(--text); }
+.seg button:focus-visible { outline: 2px solid color-mix(in srgb, var(--accent) 70%, transparent); outline-offset: 1px; }
+.seg button[aria-pressed="true"] { background: color-mix(in srgb, var(--accent) 16%, transparent); color: var(--accent); font-weight: 550; }
+.calc-window { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; font-size: 14px; color: var(--muted); }
+.calc-window .calc-win-hint { font-size: 12.5px; flex: 1 1 260px; }
+.calc-bars .track i { transition: width .35s ease; }
+@media (prefers-reduced-motion: reduce) { .calc-bars .track i { transition: none; } }
 
 /* ------------------------------------------------------------ key/value details */
 .kv { display: grid; grid-template-columns: 200px minmax(0, 1fr); }
@@ -395,7 +403,7 @@ td:has(> .ext) { white-space: nowrap; }
 .input-unit { position: relative; }
 .input-unit input { padding-right: 52px; }
 .input-unit i { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); font-style: normal; color: var(--dim); font-size: 13px; pointer-events: none; }
-.calc-bars li { grid-template-columns: minmax(0, 260px) minmax(0, 1fr) 84px; }
+.calc-bars li { grid-template-columns: minmax(0, 260px) minmax(0, 1fr) 96px; }
 .calc-bars .tracks { display: grid; gap: 4px; min-width: 0; }
 .calc-bars .track.ghost { height: 5px; }
 .calc-bars .track.ghost i { background: color-mix(in srgb, var(--muted) 55%, transparent); }
