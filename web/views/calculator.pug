@@ -2,16 +2,17 @@ extends layout
 block content
   - var sym = coin.symbol
   - var def = pools.find(p => p.name === 'Suprnova') || pools[0]
-  - var keep = 1 - (def.fee + def.minerFee) / 100
+  - var keepOf = (c, p) => 1 - ((p || def).fee + c.fee) / 100
   - var kwh = c => c.power * 24 / 1000
   - var fmtC = v => v >= 100 ? F.num(v, 0) : v >= 1 ? F.num(v, 2) : F.num(v, 3)
   - var rate = v => { var h = F.hashrate(v); return h.value + ' ' + h.unit; }
-  - var maxDay = cards.length ? cards[0].grossPerDay * keep : 1
+  - var maxDay = Math.max(1e-12, ...cards.map(c => c.grossPerDay * keepOf(c)))
+  - var many = minerReleases.length > 1
   - var tf = c => c.parts.reduce((s, b, k) => s + b * (net[k].growth > 0 ? Math.log1p(net[k].growth * trendDays) / (net[k].growth * trendDays) : 1), 0) * minerReward
   - var pct = g => (g >= 0 ? '+' : '−') + Math.abs(g * 100).toFixed(0) + '%'
   .page-head
     h1 Mining calculator
-      span.sub Expected #{sym} per day for each GPU, after pool fees, from the live network hashrate of each model.
+      span.sub Expected #{sym} per day for each GPU and miner, after the pool's and the miner's fees, from the live network hashrate of each model.
   script#calc-data(type='application/json')!= JSON.stringify(calcData).replace(/</g, '\\u003c')
 
   form.panel.calc-controls(data-calc='', onsubmit='return false')
@@ -19,7 +20,7 @@ block content
       span Pool
       select(name='pool')
         each p, i in pools
-          option(value=i, selected=p === def)= p.name + ' (' + (p.fee + p.minerFee) + '%' + (p.verified ? '' : '*') + ')'
+          option(value=i, selected=p === def)= p.name + ' (' + p.fee + '%' + (p.verified ? '' : '*') + ')'
     label
       span Electricity
       .input-unit
@@ -67,7 +68,7 @@ block content
     .panel-head
       div
         h2 #{sym} per day by card
-        .note.calc-pool-note On #{def.name}, after #{def.fee + def.minerFee}% fees, network of the last 3 hours
+        .note.calc-pool-note On #{def.name} (#{def.fee}% pool fee), after each miner's dev fee, network of the last 3 hours
         .calc-key
           span
             i.k-now
@@ -77,12 +78,12 @@ block content
             span.calc-trend-label Average of the next #{trendDays} days on the network trend
     ul.hbars.calc-bars
       each c, i in cards
-        - var day = c.grossPerDay * keep
-        - var tday = tf(c) * keep
+        - var day = c.grossPerDay * keepOf(c)
+        - var tday = tf(c) * keepOf(c)
         li(data-i=i)
           span.lbl
             b= c.gpu
-            span.dim  #{c.power} W
+            span.dim  #{many ? c.miner + ', ' : ''}#{c.power} W
           span.tracks
             span.track: i(data-f='bar', style='width:' + (maxDay ? (100 * day / maxDay).toFixed(1) : 0) + '%; --c:' + (c.vendor === 'amd' ? '#f07178' : coin.accent))
             span.track.ghost: i(data-f='tbar', style='width:' + (maxDay ? (100 * tday / maxDay).toFixed(1) : 0) + '%')
@@ -113,24 +114,26 @@ block content
             th.num.hide-sm(title='Average time for one card to find a block alone') Solo, per block
         tbody
           each c, i in cards
-            - var day = c.grossPerDay * keep
+            - var day = c.grossPerDay * keepOf(c)
             - var cost = kwh(c) * defaultPower
             tr(data-i=i)
               td
                 b= c.gpu
                 .dim(style='font-size:12.5px')
-                  | #{c.power} W, #{c.miner} #{c.version}
+                  | #{c.power} W, #{c.miner} #{c.version}, #{c.fee}% fee
                   if c.upcoming
                     span.unverified(title=c.note || 'Not released yet')  (upcoming)
+                  else if c.older
+                    span.unverified(title=c.note || 'Older release of this miner')  *
                   else if c.note
-                    span.unverified(title=c.note)  *
+                    span.unverified(title=c.note)  ⓘ
                   |
                   |
                   a.ext(href=c.source, rel='noopener nofollow ugc', target='_blank', title=(c.upcoming ? c.miner + ' releases (' + c.version + ' not released yet)' : 'Release notes of ' + c.miner + ' ' + c.version) + ', measured ' + c.date) ↗
               each m in coin.models
                 td.num= rate(c.rates[m.id])
               td.num: b(data-f='day')= fmtC(day)
-              td.num.ghost(data-f='trend')= fmtC(tf(c) * keep)
+              td.num.ghost(data-f='trend')= fmtC(tf(c) * keepOf(c))
               td.num.hide-sm(data-f='kwh')= fmtC(day / kwh(c))
               td.num(data-f='cost')= '$' + F.num(cost, 2)
               td.num(data-f='be')= day > 0 ? '$' + (cost / day).toPrecision(3) : '–'
@@ -138,19 +141,26 @@ block content
               td.num.hide-sm(data-f='solo')= c.blocksPerDay > 0 ? F.duration(86400 / c.blocksPerDay) : '–'
     .table-note
       | Break-even: the #{sym} price at which a day of coins pays a day of electricity.
-      if cards.some(c => c.note && !c.upcoming)
-        |  * Older miner release; current versions are faster.
+      if cards.some(c => c.older)
+        |  * Older release of that miner; its current version may be faster.
+      if cards.some(c => c.note && !c.older && !c.upcoming)
+        |  ⓘ How it was measured (hover).
       if cards.some(c => c.upcoming)
         |  Upcoming: measured with a suprminer build that is not released yet.
-      |  Rates come from the miners' published benchmarks, measured on two fixed models; on the live network a card's rate moves from block to block, so treat the yield as an estimate.
-      if minerRelease
-        |  Hashrates of #[a(href=minerRelease.url, rel='noopener', target='_blank') #{minerRelease.miner} #{minerRelease.version}]#{minerRelease.upcoming ? ', an upcoming release; rates of released versions are imported every day.' : ', the latest release with benchmarks (imported every day).'}
+      |  Rates come from the miners' published benchmarks; on the live network a card's rate moves from block to block, so treat the yield as an estimate.
+      if minerReleases.length
+        |  Hashrates of
+        each r, ri in minerReleases
+          | #{ri ? (ri === minerReleases.length - 1 ? ' and' : ',') : ''} #[a(href=r.url || '#', rel='noopener', target='_blank') #{r.miner} #{r.version}]#{r.upcoming ? ' (upcoming)' : ''} (#{r.fee}% fee)
+        | .
+      if many
+        |  Each miner publishes its own measurements, on its own clocks and on the models of the day it measured; a card's rate depends strongly on the model, so differences between miners of less than about 2× are within that spread. The fair comparison is your pool's accepted shares, with each miner run for some hours.
 
   section.panel.section
     .panel-head
       div
         h2 #{sym} per day by card and pool
-        .note After each pool's fee (and the fee of its own miner, where it has one). Solo mining has no fee but pays only when your own rigs find a block.
+        .note After each pool's fee and the miner's own dev fee. Solo mining has no pool fee but pays only when your own rigs find a block.
     .table-scroll
       table.t.matrix-t
         thead
@@ -161,18 +171,21 @@ block content
                 if p.color && !p.solo
                   i.dot(style='--c:' + p.color)
                 |  #{p.name}
-                .dim(style='font-size:12px; font-weight:400') #{p.fee + p.minerFee}%#{p.verified ? '' : '*'}
+                .dim(style='font-size:12px; font-weight:400') #{p.fee}%#{p.verified ? '' : '*'}
         tbody
-          each c in cards.filter((x, i, a) => a.findIndex(y => y.gpu === x.gpu) === i)
-            tr(data-ci=cards.indexOf(c))
-              td: b= c.gpu
+          each c, ci in cards
+            tr(data-ci=ci)
+              td
+                b= c.gpu
+                if many
+                  .dim(style='font-size:12.5px') #{c.miner}, #{c.fee}% fee
               each p, pi in pools
-                td.num(data-pool=pi)= fmtC(c.grossPerDay * (1 - (p.fee + p.minerFee) / 100))
+                td.num(data-pool=pi)= fmtC(c.grossPerDay * keepOf(c, p))
     .table-note * No public fee page; the fee was confirmed to us directly. Pools can publish their fee in the labels file on GitHub.
 
   if trend.lines.length && trend.x.length > 1
     section.panel.chart-card.section
-      +chartHead('Yield: last 24 hours and the next ' + trendDays + ' days', null, null, sym + ' per day for one card before pool fees: solid, at the network of each 2-hour window; dashed, if the network keeps the trend of those 24 hours')
+      +chartHead('Yield: last 24 hours and the next ' + trendDays + ' days', null, null, sym + ' per day for one card before fees: solid, at the network of each 2-hour window; dashed, if the network keeps the trend of those 24 hours')
       .panel-body
         +chart('c-trend', trend.x, null, { format: 'coins', unit: sym + '/day', zero: true, lines: trend.lines, tall: true })
       .legend

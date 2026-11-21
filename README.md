@@ -56,7 +56,8 @@ python indexer/label.py neb add <address> "<label>" [pool|exchange|project|holde
 python indexer/label.py neb list | rm <address>
 ```
 
-Pool entries can carry `fee`, `miner_fee` and `fee_source`; the Pools page and the mining calculator use them.
+Pool entries can carry `fee`, `miner_fee` and `fee_source`; the Pools page shows them, the mining calculator takes the
+pool `fee` and, per card, the dev fee of the miner it was measured with (`fee` in the benchmarks file).
 
 Labels are stored in the `labels` table of each coin database (never touched by reorgs), with
 `source` = `repo` (from the file; sync adds, updates and removes them) or `local` (added by hand;

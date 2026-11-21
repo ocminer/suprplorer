@@ -484,21 +484,29 @@ function coinRouter(coin, redis) {
       seen.add(l.name);
       pools.push({ name: l.name, fee: l.fee, minerFee: l.minerFee || 0, verified: !!l.feeSource, url: l.url, color: l.color });
     }
-    pools.sort((a, b) => (a.fee + a.minerFee) - (b.fee + b.minerFee) || a.name.localeCompare(b.name));
+    pools.sort((a, b) => a.fee - b.fee || a.name.localeCompare(b.name));
     pools.push({ name: 'Solo (own node)', fee: 0, minerFee: 0, verified: true, solo: true, color: '#8b93ad' });
+    const vk = v => String(v).split('.').map(Number);
+    const newer = (a, b) => { const x = vk(a), y = vk(b); for (let i = 0; i < Math.max(x.length, y.length); i++) if ((x[i] || 0) !== (y[i] || 0)) return (x[i] || 0) > (y[i] || 0); return false; };
+    // each card with its miner's own dev fee (the pool's fee is applied per pool on the pages)
     const cards = CALC.loadBenchmarks(coin.id, models.map(m => m.id)).map(b => {
       const bpd = CALC.blocksPerDay(b.rates, net);
-      return { gpu: b.gpu, vendor: b.vendor, miner: b.miner, version: b.version, power: b.power_w, rates: b.rates, date: b.date,
+      const fee = Number(b.fee) >= 0 ? Number(b.fee) : 0;
+      return { gpu: b.gpu, vendor: b.vendor, miner: b.miner, version: b.version, power: b.power_w, rates: b.rates, date: b.date, fee,
         parts: CALC.parts(b.rates, net),
         source: b.source, note: b.note || null, auto: b.auto, upcoming: !!b.upcoming, blocksPerDay: bpd, grossPerDay: bpd * minerReward };
-    }).sort((a, b) => b.grossPerDay - a.grossPerDay);
-    const vk = v => String(v).split('.').map(Number);
-    const newer = (a, b) => { const x = vk(a), y = vk(b); for (let i = 0; i < 3; i++) if (x[i] !== y[i]) return x[i] > y[i]; return false; };
-    // the newest suprminer release the cards were measured with (a build not released yet links to the releases)
-    const latest = cards.filter(c => c.miner === 'suprminer').reduce((a, c) => (!a || newer(c.version, a.version) ? c : a), null);
-    const minerRelease = latest ? { miner: 'suprminer', version: latest.version, upcoming: latest.upcoming,
-      url: latest.upcoming ? 'https://github.com/ocminer/suprminer/releases' : `https://github.com/ocminer/suprminer/releases/tag/v${latest.version}` } : null;
-    return { models, K, tip, net, reward, project, feesPerBlock, minerReward, pools, cards, d1, minerRelease, netWindow: WIN };
+    }).sort((a, b) => b.grossPerDay * (1 - b.fee / 100) - a.grossPerDay * (1 - a.fee / 100));
+    // the newest release of every miner the cards were measured with (a build not released yet links to the releases);
+    // a card on an older release than its miner's newest is marked
+    const releases = new Map();
+    for (const c of cards) if (!releases.has(c.miner) || newer(c.version, releases.get(c.miner).version)) releases.set(c.miner, c);
+    for (const c of cards) c.older = newer(releases.get(c.miner).version, c.version);
+    const minerReleases = [...releases.values()].map(c => ({ miner: c.miner, version: c.version, upcoming: c.upcoming, fee: c.fee,
+      url: c.miner === 'suprminer' ? (c.upcoming ? 'https://github.com/ocminer/suprminer/releases' : `https://github.com/ocminer/suprminer/releases/tag/v${c.version}`)
+        : (/\/releases\/tag\//.test(c.source || '') ? c.source : null) }))
+      .sort((a, b) => (b.miner === 'suprminer') - (a.miner === 'suprminer') || a.miner.localeCompare(b.miner));
+    const minerRelease = minerReleases.find(r => r.miner === 'suprminer') || minerReleases[0] || null;
+    return { models, K, tip, net, reward, project, feesPerBlock, minerReward, pools, cards, d1, minerRelease, minerReleases, netWindow: WIN };
   };
 
   // market: price from the exchange (via the price feed), market cap, what mining earns in dollars
@@ -515,16 +523,15 @@ function coinRouter(coin, redis) {
     const ths = act.hashrate / 1e12;
     const POWER = 0.30;
     const sui = mm.pools.find(p => p.name === 'Suprnova') || mm.pools[0];
-    const keep = 1 - (sui.fee + sui.minerFee) / 100;
-    const cards = mm.cards.filter((c, i, a) => a.findIndex(x => x.gpu === c.gpu) === i).slice(0, 8).map(c => {
-      const coins = c.grossPerDay * keep, cost = c.power * 24 / 1000 * POWER;
+    const cards = mm.cards.filter((c, i, a) => a.findIndex(x => CALC.family(x.gpu) === CALC.family(c.gpu)) === i).slice(0, 8).map(c => {
+      const coins = c.grossPerDay * (1 - (sui.fee + c.fee) / 100), cost = c.power * 24 / 1000 * POWER;
       return { ...c, coins, revenue: usd != null ? coins * usd : null, cost, profit: usd != null ? coins * usd - cost : null,
         breakEven: coins > 0 ? cost / coins : null };
     });
     render(res, 'market', `${coin.name} Price and Market – ${price ? '$' + F.num(usd, usd < 1 ? 4 : 2) : 'not traded'}`, {
       desc: `${coin.name} (${coin.symbol}) price${price ? ' on ' + price.source + ' ' + price.market : ''}, 24h change and volume, market cap, what miners earn per day in dollars, hashprice and GPU mining profit at the current price.`,
       range, price, hist, since, supply, maxSupply, earned24, issued24, ths, POWER, sui, cards,
-      hashprice: usd != null && ths > 0 ? earned24 * usd / ths : null, minerReward: mm.minerReward, minerRelease: mm.minerRelease });
+      hashprice: usd != null && ths > 0 ? earned24 * usd / ths : null, minerReward: mm.minerReward, minerRelease: mm.minerRelease, minerReleases: mm.minerReleases });
   }));
 
   r.get('/calculator', cached(), wrap(async (req, res) => {
@@ -534,7 +541,7 @@ function coinRouter(coin, redis) {
     const K = (coin.models || []).length;
     const [mm, mtrend, ...wstats] = await Promise.all([miningModel(), D.modelSeries('7d', K),
       ...WINDOWS.map(([, secs]) => D.modelStats(secs, K))]);
-    const { models, tip, net, reward, project, feesPerBlock, minerReward, pools, cards, minerRelease } = mm;
+    const { models, tip, net, reward, project, feesPerBlock, minerReward, pools, cards, minerRelease, minerReleases } = mm;
     const windows = WINDOWS.map(([id, secs], wi) => {
       const wn = CALC.network(models, wstats[wi], secs);
       return { id, secs, net: wn.map(n => ({ hashrate: n.hashrate, blocksPerDay: n.blocksPerDay, blockTime: n.blockTime })),
@@ -545,7 +552,9 @@ function coinRouter(coin, redis) {
     // yield of the strongest cards over the last 24 hours, the window the trend is fitted on (2-hour windows,
     // each at the network of its window),
     // then today's estimate and the next TREND_DAYS on the network trend (one point every 6 hours)
-    const trendCards = cards.filter((c, i, a) => a.findIndex(x => x.gpu === c.gpu) === i).slice(0, 4);
+    const trendCards = cards.filter((c, i, a) => a.findIndex(x => CALC.family(x.gpu) === CALC.family(c.gpu)) === i).slice(0, 4);
+    const many = minerReleases.length > 1;
+    const nameOf = c => many ? `${c.gpu}, ${c.miner}` : c.gpu;
     const tcolors = ['#38d5c3', '#f2b84b', '#8e7cf8', '#5aa9ff'];
     const TREND_DAYS = 7;
     // full windows of the last 24 hours only (the newest window is still filling)
@@ -563,21 +572,21 @@ function coinRouter(coin, redis) {
     };
     const trend = { x: hist.map(i => mtrend.x[i] + mtrend.bucket / 2).concat([tip.time], ahead.map(t => tip.time + t)), lines: [] };
     trendCards.forEach((c, ci) => {
-      trend.lines.push({ label: c.gpu, color: tcolors[ci], now: c.grossPerDay, end: at(c, TREND_DAYS * 86400),
+      trend.lines.push({ label: nameOf(c), color: tcolors[ci], now: c.grossPerDay, end: at(c, TREND_DAYS * 86400),
         y: hist.map(i => measured(c, i)).concat([c.grossPerDay], ahead.map(() => null)) });
     });
     trendCards.forEach((c, ci) => {
-      trend.lines.push({ label: c.gpu + ', on trend', color: tcolors[ci], dash: [4, 5],
+      trend.lines.push({ label: nameOf(c) + ', on trend', color: tcolors[ci], dash: [4, 5],
         y: hist.map(() => null).concat([c.grossPerDay], ahead.map(t => at(c, t))) });
     });
     const price = priceRaw ? JSON.parse(priceRaw) : null;
     render(res, 'calculator', `${coin.name} Mining Calculator – coins per GPU, pool fees and power cost`, {
       desc: `${coin.name} mining calculator: expected ${coin.symbol} per day for every benchmarked GPU on each pool, after fees, with power cost and break-even price, from the live network hashrate of each model.`,
-      tip, net, cards, pools, minerReward, reward, project, feesPerBlock, trend, price, defaultPower: 0.30, minerRelease, trendDays: TREND_DAYS,
+      tip, net, cards, pools, minerReward, reward, project, feesPerBlock, trend, price, defaultPower: 0.30, minerRelease, minerReleases, trendDays: TREND_DAYS,
       windows, defWindow, trendIdx: trendCards.map(c => cards.indexOf(c)),
       calcData: { models: models.map(m => ({ id: m.id, name: m.name })), net: net.map(n => ({ id: n.id, hashrate: n.hashrate, blocksPerDay: n.blocksPerDay, growth: n.growth })),
-        minerReward, pools: pools.map(p => ({ name: p.name, fee: p.fee, minerFee: p.minerFee })), price: price && price.usd ? price.usd : null,
-        cards: cards.map(c => ({ gpu: c.gpu, power: c.power, blocksPerDay: c.blocksPerDay, parts: c.parts })),
+        minerReward, pools: pools.map(p => ({ name: p.name, fee: p.fee })), price: price && price.usd ? price.usd : null,
+        cards: cards.map(c => ({ gpu: c.gpu, power: c.power, fee: c.fee, blocksPerDay: c.blocksPerDay, parts: c.parts })),
         windows, defWindow, trendDays: TREND_DAYS,
         chart: { id: 'c-trend', hist: hist.length, ahead, cards: trendCards.map(c => cards.indexOf(c)) } } });
   }));

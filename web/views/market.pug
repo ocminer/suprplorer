@@ -62,10 +62,12 @@ block content
         div
           h2 GPU mining at #{usdF(usd)}
           .note
-            if minerRelease
-              | On #{sui.name} (#{sui.fee + sui.minerFee}% fees) at $#{POWER.toFixed(2)}/kWh, network of the last 3 hours, hashrates of #[a(href=minerRelease.url, rel='noopener', target='_blank') #{minerRelease.miner} #{minerRelease.version}]#{minerRelease.upcoming ? ' (upcoming)' : ''}. Other pools, power prices and card counts on the calculator.
-            else
-              | On #{sui.name} (#{sui.fee + sui.minerFee}% fees) at $#{POWER.toFixed(2)}/kWh, network of the last 3 hours. Other pools, power prices and card counts on the calculator.
+            | On #{sui.name} (#{sui.fee}% pool fee, plus the miner's dev fee) at $#{POWER.toFixed(2)}/kWh, network of the last 3 hours
+            if minerReleases && minerReleases.length
+              | , hashrates of
+              each r, ri in minerReleases
+                | #{ri ? (ri === minerReleases.length - 1 ? ' and' : ',') : ''} #[a(href=r.url || '#', rel='noopener', target='_blank') #{r.miner} #{r.version}]#{r.upcoming ? ' (upcoming)' : ''} (#{r.fee}% fee)
+            | . The best miner per card; all miners, other pools, power prices and card counts on the calculator.
         a.aside(href=coin.base + '/calculator') Open the calculator
       .table-scroll
         table.t
@@ -82,7 +84,7 @@ block content
               tr
                 td
                   b= c.gpu
-                  span.dim(style='margin-left:8px; font-size:12.5px')= c.power + ' W'
+                  span.dim(style='margin-left:8px; font-size:12.5px')= c.miner + ', ' + c.power + ' W'
                 td.num= F.num(c.coins, 2)
                 td.num= usdF(c.revenue)
                 td.num.dim= usdF(c.cost)

@@ -47,7 +47,7 @@ and a card can be many times faster on one than on the other, so both are needed
 ```json
 { "miner": "yourminer", "version": "2.1.0", "gpu": "RTX 4090", "vendor": "nvidia", "power_w": 450,
   "rates": { "kepler": 250000000, "tess": 2600000000 }, "date": "2026-11-21",
-  "source": "https://github.com/you/yourminer#benchmarks", "note": "stock clocks, Linux" }
+  "source": "https://github.com/you/yourminer#benchmarks", "fee": 1, "note": "stock clocks, Linux" }
 ```
 
 | field | rules |
@@ -59,7 +59,8 @@ and a card can be many times faster on one than on the other, so both are needed
 | `rates` | whole H/s for every model of the coin (`kepler` and `tess` for NEB) |
 | `date` | day of the measurement, `YYYY-MM-DD` |
 | `source` | an `https://` link to where the measurement is published |
-| `note` | optional, one line, at most 160 characters |
+| `fee` | the miner's own dev fee in percent (`0` if it has none); the calculator takes it off the yield together with the pool's fee |
+| `note` | optional, one line, at most 160 characters: how it was measured (clocks, live or benchmark) |
 
 Check the file with `python tools/benchmarks.py check benchmarks/neb.json` and open a pull request
 with a link to the published measurement. suprminer's own release tables are also imported

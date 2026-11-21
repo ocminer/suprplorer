@@ -269,15 +269,16 @@
     };
     var update = function () {
       var pool = D.pools[+form.elements.pool.value] || D.pools[0];
-      var keep = 1 - (pool.fee + pool.minerFee) / 100;
+      // the pool's fee plus each miner's own dev fee
+      var keepOf = function (i, p) { return 1 - ((p || pool).fee + (D.cards[i].fee || 0)) / 100; };
       var power = get('power') || 0, price = get('price'), count = Math.max(1, Math.round(get('count') || 1));
       var bpd = D.cards.map(function (c, i) { return W >= 0 ? sum(partsOf(i)) : c.blocksPerDay; });
-      var days = bpd.map(function (b) { return b * D.minerReward * keep * count; });
+      var days = bpd.map(function (b, i) { return b * D.minerReward * keepOf(i) * count; });
       // average over the chosen period if each model's network keeps its linear trend (never above today)
       var tdays = +form.elements.trend.value || 7;
       var factor = D.net.map(function (n) { var x = Math.max(0, n.growth || 0) * tdays; return x > 1e-9 ? Math.log1p(x) / x : 1; });
       var trends = D.cards.map(function (c, i) {
-        return partsOf(i).reduce(function (s, b, k) { return s + b * factor[k]; }, 0) * D.minerReward * keep * count;
+        return partsOf(i).reduce(function (s, b, k) { return s + b * factor[k]; }, 0) * D.minerReward * keepOf(i) * count;
       });
       var max = Math.max.apply(null, days.concat([1e-12]));
       D.cards.forEach(function (c, i) {
@@ -304,7 +305,7 @@
       var ph = document.querySelector('.calc-profit-h');
       if (ph) ph.hidden = price == null;
       var note = document.querySelector('.calc-pool-note');
-      if (note) note.textContent = 'On ' + pool.name + ', after ' + (pool.fee + pool.minerFee) + '% fees, ' +
+      if (note) note.textContent = 'On ' + pool.name + ' (' + pool.fee + '% pool fee), after each miner\'s dev fee, ' +
         (count > 1 ? count + ' cards, ' : '') + 'network of the last ' + (W >= 0 ? winWords(D.windows[W]) : '3 hours');
       if (W >= 0) {
         // network stats of the window
@@ -317,10 +318,10 @@
         });
         // card x pool matrix (one card, before the card count)
         document.querySelectorAll('tr[data-ci]').forEach(function (tr) {
-          var b = bpd[+tr.getAttribute('data-ci')];
+          var ci = +tr.getAttribute('data-ci'), b = bpd[ci];
           tr.querySelectorAll('[data-pool]').forEach(function (td) {
             var p = D.pools[+td.getAttribute('data-pool')];
-            td.textContent = coinsFmt(b * D.minerReward * (1 - (p.fee + p.minerFee) / 100));
+            td.textContent = coinsFmt(b * D.minerReward * keepOf(ci, p));
           });
         });
       }

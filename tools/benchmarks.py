@@ -17,8 +17,8 @@ from datetime import date
 
 MODELS = {"neb": ("kepler", "tess")}
 VENDORS = ("nvidia", "amd", "intel", "cpu", "other")
-ENTRY_KEYS = {"miner", "version", "gpu", "vendor", "power_w", "rates", "date", "source", "note"}
-REQUIRED = ENTRY_KEYS - {"note"}
+ENTRY_KEYS = {"miner", "version", "gpu", "vendor", "power_w", "rates", "date", "source", "fee", "note"}
+REQUIRED = ENTRY_KEYS - {"note", "fee"}
 NAME_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9 .,+()/_-]{0,63}$")
 VERSION_RE = re.compile(r"^[0-9A-Za-z][0-9A-Za-z.+_-]{0,31}$")
 URL_RE = re.compile(r"^https://[A-Za-z0-9.-]+\.[A-Za-z]{2,}(?:/[A-Za-z0-9._~%!$&'()*+,;=:@/?#-]*)?$")
@@ -85,6 +85,8 @@ def check(path):
                 errors.append(f"{w}: date is not a real date")
         if not isinstance(e["source"], str) or len(e["source"]) > 255 or not URL_RE.match(e["source"]):
             errors.append(f"{w}: source must be an https:// link to the published measurement")
+        if "fee" in e and (isinstance(e["fee"], bool) or not isinstance(e["fee"], (int, float)) or not 0 <= e["fee"] <= 50):
+            errors.append(f"{w}: fee must be the miner's dev fee in percent, 0-50")
         if "note" in e and (not isinstance(e["note"], str) or len(e["note"]) > 160 or any(ord(c) < 32 for c in e["note"])):
             errors.append(f"{w}: note must be one line of at most 160 characters")
         key = (e.get("miner"), e.get("version"), e.get("gpu"), e.get("power_w"))
@@ -149,7 +151,7 @@ def suprminer(coin, readme):
             gpu = cells[0].replace("*", "").strip()
             entry = {"miner": "suprminer", "version": version, "gpu": gpu, "vendor": vendor,
                      "power_w": int(pm.group(1)), "rates": {"kepler": rate[0], "tess": rate[1]},
-                     "date": (day or date.today()).isoformat(), "source": f"{SUPRMINER_URL}/releases/tag/v{version}"}
+                     "date": (day or date.today()).isoformat(), "source": f"{SUPRMINER_URL}/releases/tag/v{version}", "fee": 0}
             if _vkey(version) < (1, 9, 48):
                 entry["note"] = "Older release, before attempt selection (1.9.48); current versions are faster."
             if gpu not in best or _vkey(version) > _vkey(best[gpu]["version"]):

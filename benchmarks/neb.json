@@ -14,8 +14,9 @@
         "tess": 5900000000
       },
       "date": "2026-11-21",
-      "source": "https://github.com/ocminer/suprminer/releases",
-      "note": "Upcoming release 1.9.51, measured on the models of 21 November 2026."
+      "source": "https://github.com/ocminer/suprminer/releases/tag/v1.9.51",
+      "note": "Measured on the models of 21 November 2026. Development build with the release kernels.",
+      "fee": 0
     },
     {
       "miner": "suprminer",
@@ -24,12 +25,13 @@
       "vendor": "nvidia",
       "power_w": 600,
       "rates": {
-        "kepler": 795000000,
-        "tess": 4510000000
+        "kepler": 804000000,
+        "tess": 4580000000
       },
       "date": "2026-11-21",
-      "source": "https://github.com/ocminer/suprminer/releases",
-      "note": "Upcoming release 1.9.51, measured on the models of 21 November 2026."
+      "source": "https://github.com/ocminer/suprminer/releases/tag/v1.9.51",
+      "note": "Measured on the models of 21 November 2026.",
+      "fee": 0
     },
     {
       "miner": "suprminer",
@@ -42,8 +44,39 @@
         "tess": 3680000000
       },
       "date": "2026-11-21",
-      "source": "https://github.com/ocminer/suprminer/releases",
-      "note": "Upcoming release 1.9.51, measured on the models of 21 November 2026."
+      "source": "https://github.com/ocminer/suprminer/releases/tag/v1.9.51",
+      "note": "Measured on the models of 21 November 2026. Development build with the release kernels; firmware maximum power (about 590 W drawn).",
+      "fee": 0
+    },
+    {
+      "miner": "suprminer",
+      "version": "1.9.51",
+      "gpu": "RTX 5080",
+      "vendor": "nvidia",
+      "power_w": 400,
+      "rates": {
+        "kepler": 428000000,
+        "tess": 1910000000
+      },
+      "date": "2026-11-21",
+      "source": "https://github.com/ocminer/suprminer/releases/tag/v1.9.51",
+      "note": "Measured on the models of 21 November 2026.",
+      "fee": 0
+    },
+    {
+      "miner": "suprminer",
+      "version": "1.9.51",
+      "gpu": "RTX 4070 Ti SUPER",
+      "vendor": "nvidia",
+      "power_w": 285,
+      "rates": {
+        "kepler": 325000000,
+        "tess": 1420000000
+      },
+      "date": "2026-11-21",
+      "source": "https://github.com/ocminer/suprminer/releases/tag/v1.9.51",
+      "note": "Measured on the models of 21 November 2026.",
+      "fee": 0
     },
     {
       "miner": "suprminer",
@@ -56,8 +89,54 @@
         "tess": 1290000000
       },
       "date": "2026-11-21",
-      "source": "https://github.com/ocminer/suprminer/releases",
-      "note": "Upcoming release 1.9.51, measured on the models of 21 November 2026."
+      "source": "https://github.com/ocminer/suprminer/releases/tag/v1.9.51",
+      "note": "Measured on the models of 21 November 2026. Development build with the release kernels; memory-unlocked.",
+      "fee": 0
+    },
+    {
+      "miner": "suprminer",
+      "version": "1.9.51",
+      "gpu": "RTX 3070",
+      "vendor": "nvidia",
+      "power_w": 250,
+      "rates": {
+        "kepler": 157000000,
+        "tess": 576000000
+      },
+      "date": "2026-11-21",
+      "source": "https://github.com/ocminer/suprminer/releases/tag/v1.9.51",
+      "note": "Measured on the models of 21 November 2026.",
+      "fee": 0
+    },
+    {
+      "miner": "suprminer",
+      "version": "1.9.51",
+      "gpu": "RX 7900 XTX",
+      "vendor": "amd",
+      "power_w": 350,
+      "rates": {
+        "kepler": 241000000,
+        "tess": 760000000
+      },
+      "date": "2026-11-21",
+      "source": "https://github.com/ocminer/suprminer/releases/tag/v1.9.51",
+      "note": "Measured on the models of 21 November 2026. OpenCL.",
+      "fee": 0
+    },
+    {
+      "miner": "suprminer",
+      "version": "1.9.51",
+      "gpu": "RX 7600 XT",
+      "vendor": "amd",
+      "power_w": 165,
+      "rates": {
+        "kepler": 78500000,
+        "tess": 269000000
+      },
+      "date": "2026-11-21",
+      "source": "https://github.com/ocminer/suprminer/releases/tag/v1.9.51",
+      "note": "Measured on the models of 21 November 2026. OpenCL.",
+      "fee": 0
     },
     {
       "miner": "suprminer",
@@ -70,7 +149,8 @@
         "tess": 5370000000
       },
       "date": "2026-11-21",
-      "source": "https://github.com/ocminer/suprminer/releases/tag/v1.9.50"
+      "source": "https://github.com/ocminer/suprminer/releases/tag/v1.9.50",
+      "fee": 0
     },
     {
       "miner": "suprminer",
@@ -83,7 +163,8 @@
         "tess": 2340000000
       },
       "date": "2026-11-21",
-      "source": "https://github.com/ocminer/suprminer/releases/tag/v1.9.50"
+      "source": "https://github.com/ocminer/suprminer/releases/tag/v1.9.50",
+      "fee": 0
     },
     {
       "miner": "suprminer",
@@ -96,7 +177,8 @@
         "tess": 1550000000
       },
       "date": "2026-11-20",
-      "source": "https://github.com/ocminer/suprminer/releases/tag/v1.9.48"
+      "source": "https://github.com/ocminer/suprminer/releases/tag/v1.9.48",
+      "fee": 0
     },
     {
       "miner": "suprminer",
@@ -109,7 +191,8 @@
         "tess": 874000000
       },
       "date": "2026-11-20",
-      "source": "https://github.com/ocminer/suprminer/releases/tag/v1.9.49"
+      "source": "https://github.com/ocminer/suprminer/releases/tag/v1.9.49",
+      "fee": 0
     },
     {
       "miner": "suprminer",
@@ -122,7 +205,8 @@
         "tess": 712000000
       },
       "date": "2026-11-21",
-      "source": "https://github.com/ocminer/suprminer/releases/tag/v1.9.50"
+      "source": "https://github.com/ocminer/suprminer/releases/tag/v1.9.50",
+      "fee": 0
     },
     {
       "miner": "suprminer",
@@ -135,7 +219,8 @@
         "tess": 311000000
       },
       "date": "2026-11-20",
-      "source": "https://github.com/ocminer/suprminer/releases/tag/v1.9.49"
+      "source": "https://github.com/ocminer/suprminer/releases/tag/v1.9.49",
+      "fee": 0
     },
     {
       "miner": "suprminer",
@@ -148,7 +233,8 @@
         "tess": 287000000
       },
       "date": "2026-11-20",
-      "source": "https://github.com/ocminer/suprminer/releases/tag/v1.9.49"
+      "source": "https://github.com/ocminer/suprminer/releases/tag/v1.9.49",
+      "fee": 0
     },
     {
       "miner": "suprminer",
@@ -162,7 +248,8 @@
       },
       "date": "2026-11-18",
       "source": "https://github.com/ocminer/suprminer/releases/tag/v1.9.46",
-      "note": "Older release, before attempt selection (1.9.48); current versions are faster."
+      "note": "Older release, before attempt selection (1.9.48); current versions are faster.",
+      "fee": 0
     },
     {
       "miner": "suprminer",
@@ -176,7 +263,8 @@
       },
       "date": "2026-11-18",
       "source": "https://github.com/ocminer/suprminer/releases/tag/v1.9.46",
-      "note": "Older release, before attempt selection (1.9.48); current versions are faster."
+      "note": "Older release, before attempt selection (1.9.48); current versions are faster.",
+      "fee": 0
     },
     {
       "miner": "suprminer",
@@ -190,7 +278,98 @@
       },
       "date": "2026-11-18",
       "source": "https://github.com/ocminer/suprminer/releases/tag/v1.9.46",
-      "note": "Older release, before attempt selection (1.9.48); current versions are faster."
+      "note": "Older release, before attempt selection (1.9.48); current versions are faster.",
+      "fee": 0
+    },
+    {
+      "miner": "FreeForGem",
+      "version": "1.0.13",
+      "gpu": "RTX 4070 Ti (12 GB)",
+      "vendor": "nvidia",
+      "power_w": 190,
+      "rates": {
+        "kepler": 135000000,
+        "tess": 488900000
+      },
+      "date": "2026-11-21",
+      "source": "https://github.com/pepsykolya/FreeForGemNeb/releases/tag/v1.0.13",
+      "fee": 1,
+      "note": "Kepler: live on a low-share model, 5 min. TESS: engine benchmark. 2250 MHz, power limit 190 W."
+    },
+    {
+      "miner": "FreeForGem",
+      "version": "1.0.13",
+      "gpu": "RTX 3080 Ti (12 GB)",
+      "vendor": "nvidia",
+      "power_w": 260,
+      "rates": {
+        "kepler": 155000000,
+        "tess": 472300000
+      },
+      "date": "2026-11-21",
+      "source": "https://github.com/pepsykolya/FreeForGemNeb/releases/tag/v1.0.13",
+      "fee": 1,
+      "note": "Kepler: live, 150-160 MA/s while auto-uv tuned. TESS: engine benchmark. 1680 MHz, power limit 260 W."
+    },
+    {
+      "miner": "FreeForGem",
+      "version": "1.0.13",
+      "gpu": "RTX 3070",
+      "vendor": "nvidia",
+      "power_w": 200,
+      "rates": {
+        "kepler": 79400000,
+        "tess": 261700000
+      },
+      "date": "2026-11-21",
+      "source": "https://github.com/pepsykolya/FreeForGemNeb/releases/tag/v1.0.13",
+      "fee": 1,
+      "note": "Kepler: live, 10 min. TESS: engine benchmark. 1680 MHz, +210, power limit 200 W (draws about 135 W)."
+    },
+    {
+      "miner": "FreeForGem",
+      "version": "1.0.13",
+      "gpu": "RTX 4070 Laptop (8 GB)",
+      "vendor": "nvidia",
+      "power_w": 85,
+      "rates": {
+        "kepler": 199800000,
+        "tess": 381700000
+      },
+      "date": "2026-11-21",
+      "source": "https://github.com/pepsykolya/FreeForGemNeb/releases/tag/v1.0.13",
+      "fee": 1,
+      "note": "Both live, 15 min, own clocks, 72-85 W."
+    },
+    {
+      "miner": "FreeForGem",
+      "version": "1.0.13",
+      "gpu": "CMP 50HX (10 GB)",
+      "vendor": "nvidia",
+      "power_w": 138,
+      "rates": {
+        "kepler": 111200000,
+        "tess": 326000000
+      },
+      "date": "2026-11-21",
+      "source": "https://github.com/pepsykolya/FreeForGemNeb/releases/tag/v1.0.13",
+      "fee": 1,
+      "note": "Live, core lock 1500 MHz, auto-uv; Kepler is the mean over models (98-125 MA/s). 138 W measured."
+    },
+    {
+      "miner": "FreeForGem",
+      "version": "1.0.9",
+      "gpu": "RTX 2060 SUPER (8 GB)",
+      "vendor": "nvidia",
+      "power_w": 77,
+      "rates": {
+        "kepler": 69800000,
+        "tess": 233000000
+      },
+      "date": "2026-11-21",
+      "source": "https://github.com/pepsykolya/FreeForGemNeb/releases/tag/v1.0.13",
+      "fee": 1,
+      "note": "Live on ffgn 1.0.9 (the newest per-model figures for this card), 1300 MHz, +165. 73-77 W measured."
     }
   ]
 }
