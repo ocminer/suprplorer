@@ -5,6 +5,126 @@
   "benchmarks": [
     {
       "miner": "suprminer",
+      "version": "1.9.55",
+      "gpu": "RTX PRO 6000 (96 GB)",
+      "vendor": "nvidia",
+      "power_w": 600,
+      "rates": {
+        "kepler": 471080000,
+        "tess": 7077500000
+      },
+      "date": "2026-11-22",
+      "source": "https://github.com/ocminer/suprminer/releases/tag/v1.9.55",
+      "note": "Measured on the identical frozen models of 22 November 2026; steady rate without the optional predictions.",
+      "fee": 0
+    },
+    {
+      "miner": "suprminer",
+      "version": "1.9.55",
+      "gpu": "RTX 5090",
+      "vendor": "nvidia",
+      "power_w": 600,
+      "rates": {
+        "kepler": 438090000,
+        "tess": 5683250000
+      },
+      "date": "2026-11-22",
+      "source": "https://github.com/ocminer/suprminer/releases/tag/v1.9.55",
+      "note": "Warm-repeat rate on the models of 22 November 2026, without the optional predictions; varied with boost clock.",
+      "fee": 0
+    },
+    {
+      "miner": "suprminer",
+      "version": "1.9.55",
+      "gpu": "H100 (80 GB)",
+      "vendor": "nvidia",
+      "power_w": 700,
+      "rates": {
+        "kepler": 291720000,
+        "tess": 4280380000
+      },
+      "date": "2026-11-22",
+      "source": "https://github.com/ocminer/suprminer/releases/tag/v1.9.55",
+      "note": "Measured on the identical frozen models of 22 November 2026; steady rate without the optional predictions.",
+      "fee": 0
+    },
+    {
+      "miner": "suprminer",
+      "version": "1.9.55",
+      "gpu": "RTX 5080",
+      "vendor": "nvidia",
+      "power_w": 400,
+      "rates": {
+        "kepler": 253310000,
+        "tess": 2434250000
+      },
+      "date": "2026-11-22",
+      "source": "https://github.com/ocminer/suprminer/releases/tag/v1.9.55",
+      "note": "Measured on the identical frozen models of 22 November 2026; steady rate without the optional predictions.",
+      "fee": 0
+    },
+    {
+      "miner": "suprminer",
+      "version": "1.9.55",
+      "gpu": "RTX 4070 Ti SUPER",
+      "vendor": "nvidia",
+      "power_w": 285,
+      "rates": {
+        "kepler": 174780000,
+        "tess": 1796750000
+      },
+      "date": "2026-11-22",
+      "source": "https://github.com/ocminer/suprminer/releases/tag/v1.9.55",
+      "note": "Models of 22 November 2026, without predictions. The GPU ran another service at the same time (shared measurement).",
+      "fee": 0
+    },
+    {
+      "miner": "suprminer",
+      "version": "1.9.55",
+      "gpu": "CMP 170HX",
+      "vendor": "nvidia",
+      "power_w": 250,
+      "rates": {
+        "kepler": 94170000,
+        "tess": 814760000
+      },
+      "date": "2026-11-22",
+      "source": "https://github.com/ocminer/suprminer/releases/tag/v1.9.55",
+      "note": "Models of 22 November 2026, without predictions. Shared diagnostics with its verifier running, not an exclusive full-power run.",
+      "fee": 0
+    },
+    {
+      "miner": "suprminer",
+      "version": "1.9.55",
+      "gpu": "RTX 3070",
+      "vendor": "nvidia",
+      "power_w": 250,
+      "rates": {
+        "kepler": 83420000,
+        "tess": 734810000
+      },
+      "date": "2026-11-22",
+      "source": "https://github.com/ocminer/suprminer/releases/tag/v1.9.55",
+      "note": "Measured on the identical frozen models of 22 November 2026; steady rate without the optional predictions.",
+      "fee": 0
+    },
+    {
+      "miner": "suprminer",
+      "version": "1.9.55",
+      "gpu": "Tesla V100 (16 GB)",
+      "vendor": "nvidia",
+      "power_w": 300,
+      "rates": {
+        "kepler": 112430000,
+        "tess": 988510000
+      },
+      "date": "2026-11-22",
+      "source": "https://github.com/ocminer/suprminer/releases/tag/v1.9.55",
+      "note": "Measured on the identical frozen models of 22 November 2026; steady rate without the optional predictions. Linux only.",
+      "fee": 0
+    },
+    {
+      "miner": "suprminer",
       "version": "1.9.54",
       "gpu": "Tesla V100 (16 GB)",
       "vendor": "nvidia",
