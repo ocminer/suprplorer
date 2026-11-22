@@ -5,6 +5,141 @@
   "benchmarks": [
     {
       "miner": "suprminer",
+      "version": "1.9.54",
+      "gpu": "Tesla V100 (16 GB)",
+      "vendor": "nvidia",
+      "power_w": 300,
+      "rates": {
+        "kepler": 131000000,
+        "tess": 942000000
+      },
+      "date": "2026-11-22",
+      "source": "https://github.com/ocminer/suprminer/releases/tag/v1.9.54",
+      "note": "Measured on the models of 22 November 2026. Earlier versions did not support this card.",
+      "fee": 0
+    },
+    {
+      "miner": "suprminer",
+      "version": "1.9.54",
+      "gpu": "RTX PRO 6000 (96 GB)",
+      "vendor": "nvidia",
+      "power_w": 600,
+      "rates": {
+        "kepler": 429000000,
+        "tess": 5900000000
+      },
+      "date": "2026-11-22",
+      "source": "https://github.com/ocminer/suprminer/releases/tag/v1.9.53",
+      "note": "Rates of 1.9.53; 1.9.54 runs the same kernels on this card. Kepler on the denser model of 21 Nov 2026 (evening), TESS from the 1.9.52 table.",
+      "fee": 0
+    },
+    {
+      "miner": "suprminer",
+      "version": "1.9.54",
+      "gpu": "RTX 5090",
+      "vendor": "nvidia",
+      "power_w": 600,
+      "rates": {
+        "kepler": 405000000,
+        "tess": 4600000000
+      },
+      "date": "2026-11-22",
+      "source": "https://github.com/ocminer/suprminer/releases/tag/v1.9.53",
+      "note": "Rates of 1.9.53; 1.9.54 runs the same kernels on this card. Kepler on the denser model of 21 Nov 2026 (evening), TESS from the 1.9.52 table.",
+      "fee": 0
+    },
+    {
+      "miner": "suprminer",
+      "version": "1.9.54",
+      "gpu": "H100 (80 GB)",
+      "vendor": "nvidia",
+      "power_w": 590,
+      "rates": {
+        "kepler": 241000000,
+        "tess": 3680000000
+      },
+      "date": "2026-11-22",
+      "source": "https://github.com/ocminer/suprminer/releases/tag/v1.9.53",
+      "note": "Rates of 1.9.53; 1.9.54 runs the same kernels on this card. Kepler on the denser model of 21 Nov 2026 (evening), TESS from the 1.9.52 table.",
+      "fee": 0
+    },
+    {
+      "miner": "suprminer",
+      "version": "1.9.54",
+      "gpu": "RTX 5080",
+      "vendor": "nvidia",
+      "power_w": 400,
+      "rates": {
+        "kepler": 231000000,
+        "tess": 1910000000
+      },
+      "date": "2026-11-22",
+      "source": "https://github.com/ocminer/suprminer/releases/tag/v1.9.53",
+      "note": "Rates of 1.9.53; 1.9.54 runs the same kernels on this card. Kepler on the denser model of 21 Nov 2026 (evening), TESS from the 1.9.52 table.",
+      "fee": 0
+    },
+    {
+      "miner": "suprminer",
+      "version": "1.9.54",
+      "gpu": "RTX 4070 Ti SUPER",
+      "vendor": "nvidia",
+      "power_w": 285,
+      "rates": {
+        "kepler": 154500000,
+        "tess": 1420000000
+      },
+      "date": "2026-11-22",
+      "source": "https://github.com/ocminer/suprminer/releases/tag/v1.9.53",
+      "note": "Rates of 1.9.53; 1.9.54 runs the same kernels on this card. Kepler on the denser model of 21 Nov 2026 (evening), TESS from the 1.9.52 table.",
+      "fee": 0
+    },
+    {
+      "miner": "suprminer",
+      "version": "1.9.54",
+      "gpu": "CMP 170HX (unlocked)",
+      "vendor": "nvidia",
+      "power_w": 250,
+      "rates": {
+        "kepler": 91000000,
+        "tess": 1290000000
+      },
+      "date": "2026-11-22",
+      "source": "https://github.com/ocminer/suprminer/releases/tag/v1.9.53",
+      "note": "Rates of 1.9.53; 1.9.54 runs the same kernels on this card. Kepler on the denser model of 21 Nov 2026 (evening), TESS from the 1.9.52 table.",
+      "fee": 0
+    },
+    {
+      "miner": "suprminer",
+      "version": "1.9.54",
+      "gpu": "RTX 3070",
+      "vendor": "nvidia",
+      "power_w": 250,
+      "rates": {
+        "kepler": 59000000,
+        "tess": 576000000
+      },
+      "date": "2026-11-22",
+      "source": "https://github.com/ocminer/suprminer/releases/tag/v1.9.53",
+      "note": "Rates of 1.9.53; 1.9.54 runs the same kernels on this card. Kepler on the denser model of 21 Nov 2026 (evening), TESS from the 1.9.52 table.",
+      "fee": 0
+    },
+    {
+      "miner": "suprminer",
+      "version": "1.9.52",
+      "gpu": "A100 (80 GB)",
+      "vendor": "nvidia",
+      "power_w": 400,
+      "rates": {
+        "kepler": 305000000,
+        "tess": 2100000000
+      },
+      "date": "2026-11-21",
+      "source": "https://github.com/ocminer/suprminer/releases/tag/v1.9.52",
+      "note": "Measured on the models of 21 November 2026, before the denser Kepler model of that evening.",
+      "fee": 0
+    },
+    {
+      "miner": "suprminer",
       "version": "1.9.51",
       "gpu": "RTX PRO 6000 (96 GB)",
       "vendor": "nvidia",
