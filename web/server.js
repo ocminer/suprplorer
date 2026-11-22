@@ -125,17 +125,62 @@ function maskIp(ip) {
   return p.length === 4 ? `${p[0]}.${p[1]}.${p[2]}.x` : ip;
 }
 
+// Is a peer a node that accepts connections? Outbound peers are (we dialled them). An inbound peer is tested
+// once in a while with a plain TCP connect to the coin's peer port, in the background, so the page never waits.
+// Only such nodes are shown with their full address (they announce themselves to the network anyway); the
+// address of every other peer stays masked.
+const PROBE_OK_TTL = 30 * 60 * 1000, PROBE_FAIL_TTL = 30 * 60 * 1000, PROBE_TIMEOUT = 2500, PROBE_PARALLEL = 8;
+function probe(host, port) {
+  return new Promise(resolve => {
+    const s = require('net').createConnection({ host, port, timeout: PROBE_TIMEOUT });
+    const done = ok => { s.destroy(); resolve(ok); };
+    s.once('connect', () => done(true));
+    s.once('timeout', () => done(false));
+    s.once('error', () => done(false));
+  });
+}
+function probeLater(coin, ips, port) {
+  coin.probes = coin.probes || new Map();
+  const now = Date.now();
+  const todo = ips.filter(ip => {
+    const r = coin.probes.get(ip);
+    return !r || (!r.busy && now - r.at > (r.ok ? PROBE_OK_TTL : PROBE_FAIL_TTL));
+  });
+  for (const ip of todo) coin.probes.set(ip, { ...(coin.probes.get(ip) || { ok: null }), busy: true, at: now });
+  let i = 0;
+  const next = () => {
+    if (i >= todo.length) return;
+    const ip = todo[i++];
+    probe(ip, port).then(ok => { coin.probes.set(ip, { ok, at: Date.now(), busy: false }); next(); });
+  };
+  for (let k = 0; k < Math.min(PROBE_PARALLEL, todo.length); k++) next();
+  if (coin.probes.size > 5000) for (const [ip, r] of coin.probes) if (now - r.at > 6 * 3600 * 1000) coin.probes.delete(ip);
+}
+const hostPort = (ip, port) => (ip.includes(':') ? `[${ip}]` : ip) + ':' + port;
+
 async function getPeers(coin) {
   if (Date.now() - coin.peers.at < 15000) return coin.peers;
   try {
     const [raw, info] = await Promise.all([rpc(coin.rpc, 'getpeerinfo'), rpc(coin.rpc, 'getinfo')]);
-    coin.peers = { at: Date.now(), info, list: raw.filter(p => p.handshake !== false).map(p => {
+    const p2p = Number(info && info.p2pport) || coin.p2pPort || null;
+    const peers = raw.filter(p => p.handshake !== false).map(p => {
       const a = String(p.addr || '');
       const i = a.lastIndexOf(':');
       const ip = i > 0 ? a.slice(0, i).replace(/^\[|\]$/g, '') : a;
-      return { masked: maskIp(ip), inbound: !!p.inbound, protocol: p.version,
+      const port = i > 0 ? Number(a.slice(i + 1)) : null;
+      return { ip, port, inbound: !!p.inbound, protocol: p.version,
         agent: String(p.subver || '').replace(/^\/|\/$/g, '') || 'unknown', height: p.height, connected: p.connected };
-    }).sort((a, b) => b.connected - a.connected) };
+    });
+    if (p2p) probeLater(coin, [...new Set(peers.filter(p => p.inbound).map(p => p.ip))], p2p);
+    const list = peers.map(p => {
+      const pr = coin.probes && coin.probes.get(p.ip);
+      const open = !p.inbound ? !!p.port : !!(pr && pr.ok && p2p);
+      const node = open ? hostPort(p.ip, p.inbound ? p2p : p.port) : null;
+      // never hand the full address of a peer that does not accept connections to the page
+      return { node, masked: maskIp(p.ip), inbound: p.inbound, checked: !p.inbound || !!(pr && pr.ok != null),
+        protocol: p.protocol, agent: p.agent, height: p.height, connected: p.connected };
+    }).sort((a, b) => (!!b.node - !!a.node) || b.connected - a.connected);
+    coin.peers = { at: Date.now(), info, list, p2p };
   } catch (e) {
     console.error(coin.id, 'peers:', e.message);
     coin.peers.at = Date.now();
@@ -597,12 +642,16 @@ function coinRouter(coin, redis) {
       desc: `The 100 largest ${coin.name} balances, known pools and wallets labelled, and how the ${coin.symbol} supply is distributed.` });
   }));
 
-  r.get('/network', cached(30), wrap(async (req, res) => {
+  r.get('/network', (req, res) => res.redirect(301, `${coin.base}/peers`));
+  r.get('/peers', cached(30), wrap(async (req, res) => {
     const [peers, tip] = await Promise.all([getPeers(coin), D.tip()]);
     const versions = {};
     for (const p of peers.list) versions[p.agent] = (versions[p.agent] || 0) + 1;
-    render(res, 'network', `${coin.name} Network – peers and node versions`, {
-      desc: `Peers connected to our ${coin.name} full node, client versions in use and how many nodes are in sync.`, peers: peers.list, info: peers.info, tip,
+    // nodes that accept connections, one per address (an inbound peer can also be an outbound one)
+    const nodes = [...new Set(peers.list.filter(p => p.node).map(p => p.node))];
+    render(res, 'network', `${coin.name} Peers – connected nodes, versions and addresses to add`, {
+      desc: `Nodes connected to our ${coin.name} full node with their client version, and the addresses of nodes that accept connections, ready to copy into your node.`,
+      peers: peers.list, info: peers.info, tip, nodes, p2p: peers.p2p,
       versions: Object.entries(versions).sort((a, b) => b[1] - a[1]) });
   }));
 
@@ -756,7 +805,7 @@ async function main() {
   }));
   app.get('/sitemap-pages.xml', (req, res) => res.type('application/xml').set('Cache-Control', 'public, max-age=3600').send(xml(
     '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">' + loc('/', null, 'daily', '0.8') +
-    coins.map(c => loc(c.base + '/', null, 'always', '1.0') + ['blocks', 'activity', 'models', 'mining', 'pools', 'calculator', 'market', 'emission', 'richlist', 'network']
+    coins.map(c => loc(c.base + '/', null, 'always', '1.0') + ['blocks', 'activity', 'models', 'mining', 'pools', 'calculator', 'market', 'emission', 'richlist', 'peers']
       .map(p => loc(`${c.base}/${p}`, null, 'hourly', '0.8')).join('')).join('') + '</urlset>')));
 
   app.get('/_health', async (req, res) => {

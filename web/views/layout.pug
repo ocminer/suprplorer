@@ -84,7 +84,7 @@ html(lang='en')
                 span.brand-by by Suprnova
           if coin
             nav.nav(aria-label='Main')
-              each item in [['', 'Overview', 'overview'], ['/blocks', 'Blocks', 'blocks'], ['/activity', 'Activity', 'activity'], ['/models', 'Models', 'models'], ['/mining', 'Mining', 'mining'], ['/pools', 'Pools', 'pools'], ['/calculator', 'Calculator', 'calculator'], ['/market', 'Market', 'market'], ['/emission', 'Emission', 'emission'], ['/richlist', 'Rich list', 'richlist'], ['/network', 'Network', 'network']]
+              each item in [['', 'Overview', 'overview'], ['/blocks', 'Blocks', 'blocks'], ['/activity', 'Activity', 'activity'], ['/models', 'Models', 'models'], ['/mining', 'Mining', 'mining'], ['/pools', 'Pools', 'pools'], ['/calculator', 'Calculator', 'calculator'], ['/market', 'Market', 'market'], ['/emission', 'Emission', 'emission'], ['/richlist', 'Rich list', 'richlist'], ['/peers', 'Peers', 'network']]
                 a(href=coin.base + item[0] + (item[0] ? '' : '/'), aria-current=(page === item[2] || (item[2] === 'blocks' && (page === 'block' || page === 'miner-blocks')) ? 'page' : null))= item[1]
             form.topsearch(action=coin.base + '/search', method='get', role='search')
               +searchIcon
@@ -117,7 +117,7 @@ html(lang='en')
               a(href=coin.base + '/market') Price and market
               a(href=coin.base + '/emission') Emission
               a(href=coin.base + '/richlist') Rich list
-              a(href=coin.base + '/network') Network
+              a(href=coin.base + '/peers') Peers
             else
               each c in coins
                 a(href=c.base + '/')= c.name + ' explorer'

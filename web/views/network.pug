@@ -1,32 +1,56 @@
 extends layout
 block content
   - var inbound = peers.filter(p => p.inbound).length
+  - var atTip = peers.filter(p => p.height >= tip.height - 1).length
+  - var pending = peers.filter(p => !p.checked).length
+  - var vcol = ['#5b8cff', '#f2b84b', '#a78bfa', '#4ade80', '#f472b6', '#fb923c', '#7dd3fc', '#e879f9']
+  - var vc = i => vcol[i % vcol.length]
   .page-head
-    h1 Network
-      span.sub Peers connected to our #{coin.name} node
+    h1 Peers
+      span.sub Nodes connected to our #{coin.name} node, their client versions, and addresses you can add to your own node
   .stats.four
     +stat('Connected peers', F.num(peers.length), null, F.num(inbound) + ' inbound, ' + F.num(peers.length - inbound) + ' outbound')
-    +stat('Best block', '#' + F.num(tip.height), null, '<span data-ts="' + tip.time + '">' + F.ago(tip.time) + '</span>')
-    +stat('Node software', info ? info.version : '–', null, info ? 'Protocol ' + info.protocolversion + ', ' + info.network : null)
-    +stat('Peers in sync', F.num(peers.filter(p => p.height >= tip.height - 1).length), null, 'Within one block of our tip')
+    +stat('Accept connections', F.num(nodes.length), null, 'Nodes reachable on the peer port' + (p2p ? ' ' + p2p : ''))
+    +stat('Our node', info ? info.version : '–', null, info ? 'Protocol ' + info.protocolversion + ', ' + info.network + ', best block #' + F.num(tip.height) : null)
+    +stat('Reported our tip', F.num(atTip), null, 'Peers whose last reported height is within one block of ours')
+
+  section.panel.section.peer-add
+    .panel-head
+      div
+        h2 Nodes you can add
+        .note Nodes that accept connections, checked from our server. Give your node a few of them if it finds no peers or few.
+      if nodes.length
+        span.aside.peer-copy
+          button.copy(type='button', data-copy=nodes.join('\n')) Copy addresses
+          button.copy(type='button', data-copy=nodes.map(n => '--seed ' + n).join(' ')) Copy as --seed list
+    .panel-body
+      if nodes.length
+        pre.peer-list(tabindex='0', aria-label='Addresses of nodes that accept connections')= nodes.join('\n')
+        p.dim.peer-how
+          | Start your node with #[code --seed HOST:PORT] for each one (#[code --addnode] works too); it keeps them dialled and dials them again after a loss. For example:
+        pre.peer-cmd= 'neb-node --run --dataset neb-datasets.bin --datadir data --listen 0.0.0.0 ' + nodes.slice(0, 3).map(n => '--seed ' + n).join(' ')
+      else
+        p.empty No connected node accepts connections right now#{pending ? '; ' + pending + ' inbound peers are still being checked' : ''}. Reload in a minute.
+
   if versions.length
     section.panel.section
       .panel-head
         h2 Client versions
       .panel-body
         .stack
-          each v in versions
-            i(style='--c:' + F.colorFor(v[0]) + ';flex:' + v[1], title=v[0] + ': ' + v[1])
+          each v, vi in versions
+            i(style='--c:' + vc(vi) + ';flex:' + v[1], title=v[0] + ': ' + v[1])
       .legend
-        each v in versions
+        each v, vi in versions
           span
-            i.dot(style='--c:' + F.colorFor(v[0]))
+            i.dot(style='--c:' + vc(vi))
             | #{v[0]}
             b= v[1]
+
   section.panel.section
     .panel-head
-      h2 Peers
-      span.aside The last part of each address is hidden
+      h2 All peers
+      span.aside Peers that don't accept connections are shown without the last part of their address
     .table-scroll
       table.t
         thead
@@ -35,12 +59,16 @@ block content
             th Direction
             th Client
             th.num.hide-sm Protocol
-            th.num Height
+            th.num(title='The height the peer last reported to our node; many report it only when they connect') Last height
             th.num Connected
         tbody
           each p in peers
             tr
-              td.mono= p.masked
+              td.mono
+                if p.node
+                  span.peer-open(title='Accepts connections') #{p.node}
+                else
+                  span.muted(title=p.checked ? 'Does not accept connections' : 'Not checked yet')= p.masked
               td.muted= p.inbound ? 'Inbound' : 'Outbound'
               td= p.agent
               td.num.hide-sm.muted= p.protocol
