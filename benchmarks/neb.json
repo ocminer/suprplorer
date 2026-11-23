@@ -5,6 +5,96 @@
   "benchmarks": [
     {
       "miner": "suprminer",
+      "version": "1.9.56",
+      "gpu": "RTX 5090",
+      "vendor": "nvidia",
+      "power_w": 600,
+      "rates": {
+        "kepler": 414540000,
+        "tess": 5585910000
+      },
+      "date": "2026-11-23",
+      "source": "https://github.com/ocminer/suprminer/releases/tag/v1.9.56",
+      "note": "Model pair A (chain models of blocks 6495-6500, 22 Nov 2026 23:50 UTC), published Linux package.",
+      "fee": 0
+    },
+    {
+      "miner": "suprminer",
+      "version": "1.9.56",
+      "gpu": "RTX 5080",
+      "vendor": "nvidia",
+      "power_w": 400,
+      "rates": {
+        "kepler": 230760000,
+        "tess": 2234790000
+      },
+      "date": "2026-11-23",
+      "source": "https://github.com/ocminer/suprminer/releases/tag/v1.9.56",
+      "note": "Model pair A (chain models of blocks 6495-6500, 22 Nov 2026 23:50 UTC), published Linux package.",
+      "fee": 0
+    },
+    {
+      "miner": "suprminer",
+      "version": "1.9.56",
+      "gpu": "RTX 5070 Ti",
+      "vendor": "nvidia",
+      "power_w": 350,
+      "rates": {
+        "kepler": 191930000,
+        "tess": 1845470000
+      },
+      "date": "2026-11-23",
+      "source": "https://github.com/ocminer/suprminer/releases/tag/v1.9.56",
+      "note": "Model pair A (chain models of blocks 6495-6500, 22 Nov 2026 23:50 UTC), published Linux package.",
+      "fee": 0
+    },
+    {
+      "miner": "suprminer",
+      "version": "1.9.56",
+      "gpu": "RTX 4070 Ti SUPER",
+      "vendor": "nvidia",
+      "power_w": 285,
+      "rates": {
+        "kepler": 162980000,
+        "tess": 1674070000
+      },
+      "date": "2026-11-23",
+      "source": "https://github.com/ocminer/suprminer/releases/tag/v1.9.56",
+      "note": "Model pair A (chain models of blocks 6495-6500, 22 Nov 2026 23:50 UTC), published Linux package; GPU shared with another service.",
+      "fee": 0
+    },
+    {
+      "miner": "suprminer",
+      "version": "1.9.56",
+      "gpu": "RTX 3070",
+      "vendor": "nvidia",
+      "power_w": 250,
+      "rates": {
+        "kepler": 66090000,
+        "tess": 701490000
+      },
+      "date": "2026-11-23",
+      "source": "https://github.com/ocminer/suprminer/releases/tag/v1.9.56",
+      "note": "Model pair A (chain models of blocks 6495-6500, 22 Nov 2026 23:50 UTC), published Linux package; one of two cards in one rig.",
+      "fee": 0
+    },
+    {
+      "miner": "suprminer",
+      "version": "1.9.56",
+      "gpu": "RX 7900 XTX",
+      "vendor": "amd",
+      "power_w": 350,
+      "rates": {
+        "kepler": 50510000,
+        "tess": 945390000
+      },
+      "date": "2026-11-23",
+      "source": "https://github.com/ocminer/suprminer/releases/tag/v1.9.56",
+      "note": "Model pair A (chain models of blocks 6495-6500, 22 Nov 2026 23:50 UTC), published Linux package (OpenCL).",
+      "fee": 0
+    },
+    {
+      "miner": "suprminer",
       "version": "1.9.55",
       "gpu": "RTX PRO 6000 (96 GB)",
       "vendor": "nvidia",
