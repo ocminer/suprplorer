@@ -8,6 +8,6 @@
     {"address": "neb13qttke92k6tshttg0d5m5ua0a7dv3948606efr3yxh4038f0sw8sxredkk", "name": "cryopool", "category": "pool", "url": "https://krx.cryo-pool.com/neb", "fee": 0.5, "fee_source": "https://krx.cryo-pool.com/neb"},
     {"address": "neb1jf3a5wm3rmmqncajwsw7822ymkp89vqrguaeaf8nzgsegfn4flmspzlpj0", "name": "pearlhash", "category": "pool", "fee": 5},
     {"address": "neb1d8uwlaacwh57w9jn3uq0w6pcty2y49w5d0d7tlafs3pjz6v9pgmqy5yqfk", "name": "k1pool", "category": "pool", "url": "https://k1pool.com/pool/neb", "fee": 1, "fee_source": "https://k1pool.com/pool/neb"},
-    {"address": "neb1h96nesz0lcw5yvgv7z9cfnrtfs3rz3el7wg42u6s6f56u0dh3u2qkcvn3c", "name": "InnovLab", "category": "pool", "url": "https://neb.innovlab.cc", "fee": 1, "fee_source": "https://neb.innovlab.cc"}
+    {"address": "neb1h96nesz0lcw5yvgv7z9cfnrtfs3rz3el7wg42u6s6f56u0dh3u2qkcvn3c", "name": "InnovLab", "category": "pool", "url": "https://neb.innovlab.cc", "fee": 3, "fee_source": "https://neb.innovlab.cc"}
   ]
 }
