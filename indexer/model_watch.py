@@ -113,7 +113,13 @@ def main():
     with db.cursor() as cur:
         for stmt in SCHEMA:
             cur.execute(stmt)
-    slots = int(rpc("getmodel", 0)["slots"])
+    while True:  # the node answers no RPC while it replays its chain after a restart (minutes): wait, don't crash
+        try:
+            slots = int(rpc("getmodel", 0)["slots"])
+            break
+        except (OSError, RuntimeError, ValueError, KeyError) as e:
+            print(f"model watch: waiting for the node: {e}", flush=True)
+            time.sleep(30)
     last, next_import = None, 0
     while True:
         try:
