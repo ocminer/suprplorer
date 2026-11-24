@@ -5,6 +5,66 @@
   "benchmarks": [
     {
       "miner": "suprminer",
+      "version": "1.9.58",
+      "gpu": "RTX 5080",
+      "vendor": "nvidia",
+      "power_w": 400,
+      "rates": {
+        "kepler": 416362000,
+        "tess": 2687777000
+      },
+      "date": "2026-11-24",
+      "source": "https://github.com/ocminer/suprminer/releases/tag/v1.9.58",
+      "note": "Model pair 7650/7651 (Kepler and TESS chain models of blocks 7650-7651), Linux, NEB 1.0.1 dataset.",
+      "fee": 0
+    },
+    {
+      "miner": "suprminer",
+      "version": "1.9.58",
+      "gpu": "RTX 5070 Ti",
+      "vendor": "nvidia",
+      "power_w": 350,
+      "rates": {
+        "kepler": 345317000,
+        "tess": 2215360000
+      },
+      "date": "2026-11-24",
+      "source": "https://github.com/ocminer/suprminer/releases/tag/v1.9.58",
+      "note": "Model pair 7650/7651 (Kepler and TESS chain models of blocks 7650-7651), Linux, NEB 1.0.1 dataset.",
+      "fee": 0
+    },
+    {
+      "miner": "suprminer",
+      "version": "1.9.58",
+      "gpu": "RTX 3070",
+      "vendor": "nvidia",
+      "power_w": 250,
+      "rates": {
+        "kepler": 141701000,
+        "tess": 795498000
+      },
+      "date": "2026-11-24",
+      "source": "https://github.com/ocminer/suprminer/releases/tag/v1.9.58",
+      "note": "Model pair 7650/7651 (Kepler and TESS chain models of blocks 7650-7651), Linux, NEB 1.0.1 dataset.",
+      "fee": 0
+    },
+    {
+      "miner": "suprminer",
+      "version": "1.9.58",
+      "gpu": "CMP 170HX",
+      "vendor": "nvidia",
+      "power_w": 300,
+      "rates": {
+        "kepler": 152278000,
+        "tess": 910452000
+      },
+      "date": "2026-11-24",
+      "source": "https://github.com/ocminer/suprminer/releases/tag/v1.9.58",
+      "note": "Model pair 7650/7651 (chain models of blocks 7650-7651), Linux. Shared card: the share verifier ran on it; short runs.",
+      "fee": 0
+    },
+    {
+      "miner": "suprminer",
       "version": "1.9.56",
       "gpu": "RTX 5090",
       "vendor": "nvidia",
