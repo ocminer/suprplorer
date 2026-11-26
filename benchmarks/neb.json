@@ -5,6 +5,111 @@
   "benchmarks": [
     {
       "miner": "suprminer",
+      "version": "1.9.60",
+      "gpu": "RTX 5090",
+      "vendor": "nvidia",
+      "power_w": 600,
+      "rates": {
+        "kepler": 1208900000,
+        "tess": 7034940000
+      },
+      "date": "2026-11-26",
+      "source": "https://github.com/ocminer/suprminer/releases/tag/v1.9.60",
+      "note": "Model pair 9266/9317 (chain models of blocks 9266 Kepler, 9317 TESS), Linux, max board power, median of four 10 s jobs.",
+      "fee": 0
+    },
+    {
+      "miner": "suprminer",
+      "version": "1.9.60",
+      "gpu": "RTX 5080",
+      "vendor": "nvidia",
+      "power_w": 400,
+      "rates": {
+        "kepler": 642920000,
+        "tess": 3047620000
+      },
+      "date": "2026-11-26",
+      "source": "https://github.com/ocminer/suprminer/releases/tag/v1.9.60",
+      "note": "Model pair 9266/9317 (chain models of blocks 9266 Kepler, 9317 TESS), Linux, max board power, median of four 10 s jobs. PCIe x16.",
+      "fee": 0
+    },
+    {
+      "miner": "suprminer",
+      "version": "1.9.60",
+      "gpu": "RTX 5070 Ti",
+      "vendor": "nvidia",
+      "power_w": 350,
+      "rates": {
+        "kepler": 485400000,
+        "tess": 2514870000
+      },
+      "date": "2026-11-26",
+      "source": "https://github.com/ocminer/suprminer/releases/tag/v1.9.60",
+      "note": "Model pair 9266/9317 (chain models of blocks 9266 Kepler, 9317 TESS), Linux, max board power, median of four 10 s jobs.",
+      "fee": 0
+    },
+    {
+      "miner": "suprminer",
+      "version": "1.9.60",
+      "gpu": "RTX 4070 Ti SUPER",
+      "vendor": "nvidia",
+      "power_w": 285,
+      "rates": {
+        "kepler": 451180000,
+        "tess": 2138990000
+      },
+      "date": "2026-11-26",
+      "source": "https://github.com/ocminer/suprminer/releases/tag/v1.9.60",
+      "note": "Model pair 9266/9317 (chain models of blocks 9266 Kepler, 9317 TESS), Linux, max board power, median of four 10 s jobs.",
+      "fee": 0
+    },
+    {
+      "miner": "suprminer",
+      "version": "1.9.60",
+      "gpu": "RTX 3070",
+      "vendor": "nvidia",
+      "power_w": 250,
+      "rates": {
+        "kepler": 224830000,
+        "tess": 928060000
+      },
+      "date": "2026-11-26",
+      "source": "https://github.com/ocminer/suprminer/releases/tag/v1.9.60",
+      "note": "Model pair 9266/9317 (chain models of blocks 9266 Kepler, 9317 TESS), Linux, max board power, median of four 10 s jobs.",
+      "fee": 0
+    },
+    {
+      "miner": "suprminer",
+      "version": "1.9.60",
+      "gpu": "RX 9070 XT",
+      "vendor": "amd",
+      "power_w": 340,
+      "rates": {
+        "kepler": 248800000,
+        "tess": 961410000
+      },
+      "date": "2026-11-26",
+      "source": "https://github.com/ocminer/suprminer/releases/tag/v1.9.60",
+      "note": "Model pair 9266/9317 (chain models of blocks 9266 Kepler, 9317 TESS), Linux, max board power, median of four 10 s jobs.",
+      "fee": 0
+    },
+    {
+      "miner": "suprminer",
+      "version": "1.9.60",
+      "gpu": "RX 7900 XTX",
+      "vendor": "amd",
+      "power_w": 350,
+      "rates": {
+        "kepler": 370840000,
+        "tess": 1880430000
+      },
+      "date": "2026-11-26",
+      "source": "https://github.com/ocminer/suprminer/releases/tag/v1.9.60",
+      "note": "Model pair 9266/9317 (chain models of blocks 9266 Kepler, 9317 TESS), Linux, max board power, median of four 10 s jobs.",
+      "fee": 0
+    },
+    {
+      "miner": "suprminer",
       "version": "1.9.58",
       "gpu": "RTX 5080",
       "vendor": "nvidia",
