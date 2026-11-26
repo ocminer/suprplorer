@@ -10,6 +10,8 @@
     {"address": "neb1d8uwlaacwh57w9jn3uq0w6pcty2y49w5d0d7tlafs3pjz6v9pgmqy5yqfk", "name": "k1pool", "category": "pool", "url": "https://k1pool.com/pool/neb", "fee": 1, "fee_source": "https://k1pool.com/pool/neb"},
     {"address": "neb1h96nesz0lcw5yvgv7z9cfnrtfs3rz3el7wg42u6s6f56u0dh3u2qkcvn3c", "name": "InnovLab", "category": "pool", "url": "https://neb.innovlab.cc", "fee": 3, "fee_source": "https://neb.innovlab.cc"},
     {"address": "neb17jt9vlfvrtyutknqtxfzzr4k0p0pufrkzy9l0r4pe3vv2hh0r94szgtx22", "name": "SafeTrade", "category": "exchange", "url": "https://safetrade.com/exchange/NEB-USDT"},
-    {"address": "neb1lc7rf0xv0tpwv3vga20hmsx4c0xnv2cwgpdn5fvzzaz9wsspye5qv0zv0y", "name": "begemod", "category": "pool", "url": "https://neb.begemod.xyz", "fee": 1, "fee_source": "https://neb.begemod.xyz"}
+    {"address": "neb1lc7rf0xv0tpwv3vga20hmsx4c0xnv2cwgpdn5fvzzaz9wsspye5qv0zv0y", "name": "begemod", "category": "pool", "url": "https://neb.begemod.xyz", "fee": 1, "fee_source": "https://neb.begemod.xyz"},
+    {"address": "neb1fku4nd9hrhuc5zpa0sa52xxdyrp3s3q65uc78p5dg3ewag4a7pzq50dypa", "name": "2Miners", "category": "pool", "url": "https://neb.2miners.com", "fee": 1, "fee_source": "https://2miners.com/neb-mining-pool"},
+    {"address": "neb15e35e0wgmuw8ej076ajjjqwjlgqkheqa49cspxc04hvk4d02r08sal35hr", "name": "2Miners SOLO", "category": "pool", "url": "https://solo-neb.2miners.com", "fee": 1.5, "fee_source": "https://solo-neb.2miners.com"}
   ]
 }
