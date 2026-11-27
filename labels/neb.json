@@ -12,6 +12,7 @@
     {"address": "neb17jt9vlfvrtyutknqtxfzzr4k0p0pufrkzy9l0r4pe3vv2hh0r94szgtx22", "name": "SafeTrade", "category": "exchange", "url": "https://safetrade.com/exchange/NEB-USDT"},
     {"address": "neb1lc7rf0xv0tpwv3vga20hmsx4c0xnv2cwgpdn5fvzzaz9wsspye5qv0zv0y", "name": "begemod", "category": "pool", "url": "https://neb.begemod.xyz", "fee": 1, "fee_source": "https://neb.begemod.xyz"},
     {"address": "neb1fku4nd9hrhuc5zpa0sa52xxdyrp3s3q65uc78p5dg3ewag4a7pzq50dypa", "name": "2Miners", "category": "pool", "url": "https://neb.2miners.com", "fee": 1, "fee_source": "https://2miners.com/neb-mining-pool"},
-    {"address": "neb15e35e0wgmuw8ej076ajjjqwjlgqkheqa49cspxc04hvk4d02r08sal35hr", "name": "2Miners SOLO", "category": "pool", "url": "https://solo-neb.2miners.com", "fee": 1.5, "fee_source": "https://solo-neb.2miners.com"}
+    {"address": "neb15e35e0wgmuw8ej076ajjjqwjlgqkheqa49cspxc04hvk4d02r08sal35hr", "name": "2Miners SOLO", "category": "pool", "url": "https://solo-neb.2miners.com", "fee": 1.5, "fee_source": "https://solo-neb.2miners.com"},
+    {"address": "neb1usmavhsdu3qfq58pfmjmgas2vhy654j0m0e0weyhfv8ljjxagrvs3fzdm2", "name": "luckypool", "category": "pool", "url": "https://neb.luckypool.io", "fee": 1, "fee_source": "https://neb.luckypool.io"}
   ]
 }
