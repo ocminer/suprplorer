@@ -5,7 +5,22 @@
   "benchmarks": [
     {
       "miner": "suprminer",
-      "version": "1.9.60",
+      "version": "1.9.61",
+      "gpu": "RX 9070 XT",
+      "vendor": "amd",
+      "power_w": 280,
+      "rates": {
+        "kepler": 285500000,
+        "tess": 1390500000
+      },
+      "date": "2026-11-27",
+      "source": "https://github.com/ocminer/suprminer/releases/tag/v1.9.61",
+      "note": "Same-card v1.9.60 -> v1.9.61 on the same recorded models: Kepler +21.5%, TESS +49.0%. Linux, 280 W, medians of 60 s runs.",
+      "fee": 0
+    },
+    {
+      "miner": "suprminer",
+      "version": "1.9.61",
       "gpu": "RTX 5090",
       "vendor": "nvidia",
       "power_w": 600,
@@ -13,14 +28,14 @@
         "kepler": 1208900000,
         "tess": 7034940000
       },
-      "date": "2026-11-26",
-      "source": "https://github.com/ocminer/suprminer/releases/tag/v1.9.60",
-      "note": "Model pair 9266/9317 (chain models of blocks 9266 Kepler, 9317 TESS), Linux, max board power, median of four 10 s jobs.",
+      "date": "2026-11-27",
+      "source": "https://github.com/ocminer/suprminer/releases/tag/v1.9.61",
+      "note": "Rates of 1.9.60 on model pair 9266/9317 (Kepler/TESS), Linux, max board power; 1.9.61 runs the same NEB code on this card.",
       "fee": 0
     },
     {
       "miner": "suprminer",
-      "version": "1.9.60",
+      "version": "1.9.61",
       "gpu": "RTX 5080",
       "vendor": "nvidia",
       "power_w": 400,
@@ -28,14 +43,14 @@
         "kepler": 642920000,
         "tess": 3047620000
       },
-      "date": "2026-11-26",
-      "source": "https://github.com/ocminer/suprminer/releases/tag/v1.9.60",
-      "note": "Model pair 9266/9317 (chain models of blocks 9266 Kepler, 9317 TESS), Linux, max board power, median of four 10 s jobs. PCIe x16.",
+      "date": "2026-11-27",
+      "source": "https://github.com/ocminer/suprminer/releases/tag/v1.9.61",
+      "note": "Rates of 1.9.60 on model pair 9266/9317 (Kepler/TESS), Linux, max board power; 1.9.61 runs the same NEB code on this card. PCIe x16.",
       "fee": 0
     },
     {
       "miner": "suprminer",
-      "version": "1.9.60",
+      "version": "1.9.61",
       "gpu": "RTX 5070 Ti",
       "vendor": "nvidia",
       "power_w": 350,
@@ -43,14 +58,14 @@
         "kepler": 485400000,
         "tess": 2514870000
       },
-      "date": "2026-11-26",
-      "source": "https://github.com/ocminer/suprminer/releases/tag/v1.9.60",
-      "note": "Model pair 9266/9317 (chain models of blocks 9266 Kepler, 9317 TESS), Linux, max board power, median of four 10 s jobs.",
+      "date": "2026-11-27",
+      "source": "https://github.com/ocminer/suprminer/releases/tag/v1.9.61",
+      "note": "Rates of 1.9.60 on model pair 9266/9317 (Kepler/TESS), Linux, max board power; 1.9.61 runs the same NEB code on this card.",
       "fee": 0
     },
     {
       "miner": "suprminer",
-      "version": "1.9.60",
+      "version": "1.9.61",
       "gpu": "RTX 4070 Ti SUPER",
       "vendor": "nvidia",
       "power_w": 285,
@@ -58,14 +73,14 @@
         "kepler": 451180000,
         "tess": 2138990000
       },
-      "date": "2026-11-26",
-      "source": "https://github.com/ocminer/suprminer/releases/tag/v1.9.60",
-      "note": "Model pair 9266/9317 (chain models of blocks 9266 Kepler, 9317 TESS), Linux, max board power, median of four 10 s jobs.",
+      "date": "2026-11-27",
+      "source": "https://github.com/ocminer/suprminer/releases/tag/v1.9.61",
+      "note": "Rates of 1.9.60 on model pair 9266/9317 (Kepler/TESS), Linux, max board power; 1.9.61 runs the same NEB code on this card.",
       "fee": 0
     },
     {
       "miner": "suprminer",
-      "version": "1.9.60",
+      "version": "1.9.61",
       "gpu": "RTX 3070",
       "vendor": "nvidia",
       "power_w": 250,
@@ -73,9 +88,9 @@
         "kepler": 224830000,
         "tess": 928060000
       },
-      "date": "2026-11-26",
-      "source": "https://github.com/ocminer/suprminer/releases/tag/v1.9.60",
-      "note": "Model pair 9266/9317 (chain models of blocks 9266 Kepler, 9317 TESS), Linux, max board power, median of four 10 s jobs.",
+      "date": "2026-11-27",
+      "source": "https://github.com/ocminer/suprminer/releases/tag/v1.9.61",
+      "note": "Rates of 1.9.60 on model pair 9266/9317 (Kepler/TESS), Linux, max board power; 1.9.61 runs the same NEB code on this card.",
       "fee": 0
     },
     {
@@ -95,7 +110,7 @@
     },
     {
       "miner": "suprminer",
-      "version": "1.9.60",
+      "version": "1.9.61",
       "gpu": "RX 7900 XTX",
       "vendor": "amd",
       "power_w": 350,
@@ -103,9 +118,9 @@
         "kepler": 370840000,
         "tess": 1880430000
       },
-      "date": "2026-11-26",
-      "source": "https://github.com/ocminer/suprminer/releases/tag/v1.9.60",
-      "note": "Model pair 9266/9317 (chain models of blocks 9266 Kepler, 9317 TESS), Linux, max board power, median of four 10 s jobs.",
+      "date": "2026-11-27",
+      "source": "https://github.com/ocminer/suprminer/releases/tag/v1.9.61",
+      "note": "Rates of 1.9.60 on model pair 9266/9317 (Kepler/TESS), Linux, max board power; 1.9.61 runs the same NEB code on this card.",
       "fee": 0
     },
     {
